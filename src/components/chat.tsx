@@ -13,7 +13,12 @@ interface StatusMessage {
   message: string;
 }
 
-type DisplayItem = ChatMessage | StatusMessage;
+interface ErrorMessage {
+  type: "error";
+  message: string;
+}
+
+type DisplayItem = ChatMessage | StatusMessage | ErrorMessage;
 
 export function Chat({
   initialQuestion,
@@ -175,10 +180,19 @@ export function Chat({
               setConversationId(data.conversation_id);
             }
           } else if (data.type === "error") {
-            setMessages((prev) => [
-              ...prev,
-              { role: "assistant", content: `Error: ${data.message}` },
-            ]);
+            setMessages((prev) => {
+              // Remove trailing empty assistant message left by stream setup
+              const filtered = prev.filter(
+                (m, idx) =>
+                  !(
+                    idx === prev.length - 1 &&
+                    "role" in m &&
+                    m.role === "assistant" &&
+                    m.content === ""
+                  )
+              );
+              return [...filtered, { type: "error", message: data.message }];
+            });
           }
         } catch {
           // Skip malformed JSON
@@ -205,6 +219,23 @@ export function Chat({
                 <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
                   {item.message}
                 </span>
+              </div>
+            );
+          }
+
+          if ("type" in item && item.type === "error") {
+            return (
+              <div key={i} className="flex justify-start">
+                <div className="max-w-[85%] md:max-w-[70%] px-4 py-3 rounded-2xl rounded-bl-md bg-red-50 border border-red-200">
+                  <div className="flex items-start gap-2">
+                    <span className="text-red-500 mt-0.5 shrink-0">
+                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+                      </svg>
+                    </span>
+                    <p className="text-sm text-red-700">{item.message}</p>
+                  </div>
+                </div>
               </div>
             );
           }

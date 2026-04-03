@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import Anthropic from "@anthropic-ai/sdk";
 import { SYSTEM_PROMPT, TOOL_DEFINITIONS } from "@/lib/llm/system-prompt";
 import { handleSearchArchive, handleCategorizeTopic } from "@/lib/llm/tools";
+import { getUserFriendlyError } from "@/lib/llm/errors";
 
 export const maxDuration = 60;
 
@@ -233,8 +234,7 @@ export async function POST(request: Request) {
         );
         controller.close();
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "An error occurred";
+        const message = getUserFriendlyError(err);
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({ type: "error", message })}\n\n`
