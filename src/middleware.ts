@@ -25,6 +25,14 @@ export async function middleware(request: NextRequest) {
     }
   );
 
+  // If there's an auth code on the root URL, redirect to the callback handler
+  const code = request.nextUrl.searchParams.get("code");
+  if (code && request.nextUrl.pathname === "/") {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/callback";
+    return NextResponse.redirect(url);
+  }
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
