@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -18,7 +19,116 @@ interface ErrorMessage {
   message: string;
 }
 
-type DisplayItem = ChatMessage | StatusMessage | ErrorMessage;
+interface Citation {
+  url: string;
+  title: string;
+  page_age: string | null;
+}
+
+interface CitationsMessage {
+  type: "citations";
+  citations: Citation[];
+}
+
+type DisplayItem = ChatMessage | StatusMessage | ErrorMessage | CitationsMessage;
+
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+        strong: ({ children }) => (
+          <strong className="font-semibold">{children}</strong>
+        ),
+        ul: ({ children }) => (
+          <ul className="list-disc list-inside mb-3 last:mb-0 space-y-1">
+            {children}
+          </ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="list-decimal list-inside mb-3 last:mb-0 space-y-1">
+            {children}
+          </ol>
+        ),
+        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        h3: ({ children }) => (
+          <h3 className="font-semibold text-base mb-2 mt-3 first:mt-0">
+            {children}
+          </h3>
+        ),
+        h2: ({ children }) => (
+          <h2 className="font-bold text-base mb-2 mt-3 first:mt-0">
+            {children}
+          </h2>
+        ),
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 underline hover:text-indigo-800"
+          >
+            {children}
+          </a>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-2 border-gray-300 pl-3 italic text-gray-600 mb-3 last:mb-0">
+            {children}
+          </blockquote>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
+
+function CitationsList({ citations }: { citations: Citation[] }) {
+  return (
+    <details className="group w-full max-w-[85%] md:max-w-[70%]">
+      <summary className="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-700 transition px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 select-none">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 shrink-0">
+          <path fillRule="evenodd" d="M4.25 5.5a.75.75 0 0 0-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75v-4a.75.75 0 0 1 1.5 0v4A2.25 2.25 0 0 1 12.75 17h-8.5A2.25 2.25 0 0 1 2 14.75v-8.5A2.25 2.25 0 0 1 4.25 4h5a.75.75 0 0 1 0 1.5h-5Zm7.97-2.22a.75.75 0 0 1 1.06 0l3.5 3.5a.75.75 0 1 1-1.06 1.06l-2.22-2.22V11a.75.75 0 0 1-1.5 0V5.56L9.78 7.78a.75.75 0 0 1-1.06-1.06l3.5-3.5Z" clipRule="evenodd" />
+        </svg>
+        <span>{citations.length} source{citations.length !== 1 ? "s" : ""}</span>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 transition-transform group-open:rotate-180">
+          <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+        </svg>
+      </summary>
+      <ul className="mt-2 space-y-1.5 pl-1">
+        {citations.map((c, i) => {
+          let hostname = "";
+          try {
+            hostname = new URL(c.url).hostname.replace(/^www\./, "");
+          } catch {
+            hostname = c.url;
+          }
+          return (
+            <li key={i}>
+              <a
+                href={c.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-xs group/link"
+              >
+                <span className="text-gray-400 shrink-0 mt-0.5">{i + 1}.</span>
+                <span className="min-w-0">
+                  <span className="text-gray-800 font-medium line-clamp-1 group-hover/link:text-indigo-600 transition">
+                    {c.title || hostname}
+                  </span>
+                  <span className="text-gray-400 block truncate">
+                    {hostname}
+                    {c.page_age ? ` · ${c.page_age}` : ""}
+                  </span>
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    </details>
+  );
+}
 
 export function Chat({
   initialQuestion,
@@ -133,9 +243,7 @@ export function Chat({
 
     const decoder = new TextDecoder();
     let assistantText = "";
-
-    // Add initial empty assistant message
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    let needsNewMessage = true;
 
     let buffer = "";
     while (true) {
@@ -154,6 +262,15 @@ export function Chat({
           const data = JSON.parse(jsonStr);
 
           if (data.type === "text") {
+            if (needsNewMessage) {
+              // Start a new assistant message
+              assistantText = "";
+              setMessages((prev) => [
+                ...prev,
+                { role: "assistant", content: "" },
+              ]);
+              needsNewMessage = false;
+            }
             assistantText += data.text;
             setMessages((prev) => {
               const updated = [...prev];
@@ -168,10 +285,18 @@ export function Chat({
               }
               return updated;
             });
+          } else if (data.type === "text_end") {
+            // Tool call is about to happen — finalize current text block
+            needsNewMessage = true;
           } else if (data.type === "status") {
             setMessages((prev) => [
               ...prev,
               { type: "status", message: data.message },
+            ]);
+          } else if (data.type === "citations") {
+            setMessages((prev) => [
+              ...prev,
+              { type: "citations", citations: data.citations },
             ]);
           } else if (data.type === "categorized") {
             setCategorizedTopic(data.topic);
@@ -223,6 +348,14 @@ export function Chat({
             );
           }
 
+          if ("type" in item && item.type === "citations") {
+            return (
+              <div key={i} className="flex justify-start">
+                <CitationsList citations={item.citations} />
+              </div>
+            );
+          }
+
           if ("type" in item && item.type === "error") {
             return (
               <div key={i} className="flex justify-start">
@@ -255,12 +388,21 @@ export function Chat({
                     : "bg-gray-100 text-gray-900 rounded-bl-md"
                 }`}
               >
-                <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {msg.content}
-                  {!isUser && msg.content === "" && isStreaming && (
-                    <span className="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-0.5" />
-                  )}
-                </div>
+                {isUser ? (
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {msg.content}
+                  </div>
+                ) : (
+                  <div className="text-sm leading-relaxed prose-sm">
+                    {msg.content ? (
+                      <MarkdownContent content={msg.content} />
+                    ) : (
+                      isStreaming && (
+                        <span className="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-0.5" />
+                      )
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           );
