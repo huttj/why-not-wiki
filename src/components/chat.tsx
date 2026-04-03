@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
@@ -142,14 +141,112 @@ function WebSearchSidebar({ webSearch }: { webSearch: WebSearchState }) {
   );
 }
 
+interface TopicData {
+  topic: {
+    id: string;
+    question: string;
+    slug: string;
+    category: 1 | 2 | 3;
+    summary: string | null;
+    llm_perspective: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+  arguments: Array<{
+    id: string;
+    position: "for" | "against";
+    summary: string;
+  }>;
+}
+
+const CATEGORY_INFO: Record<number, { label: string; emoji: string; color: string }> = {
+  1: { label: "Can't work", emoji: "\u274C", color: "bg-red-100 text-red-800 border-red-200" },
+  2: { label: "Someone's on it", emoji: "\uD83D\uDC4D", color: "bg-amber-100 text-amber-800 border-amber-200" },
+  3: { label: "Novel idea", emoji: "\u2705", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+};
+
+function TopicPanel({ topicData }: { topicData: TopicData }) {
+  const { topic } = topicData;
+  const cat = CATEGORY_INFO[topic.category];
+  const argsFor = topicData.arguments.filter((a) => a.position === "for");
+  const argsAgainst = topicData.arguments.filter((a) => a.position === "against");
+
+  return (
+    <div className="w-80 shrink-0 border-l border-gray-200 bg-white overflow-y-auto">
+      <div className="px-4 py-4 space-y-4">
+        {/* Category badge */}
+        <span className={`inline-flex items-center gap-1.5 rounded-full border font-medium px-2.5 py-1 text-xs ${cat.color}`}>
+          <span>{cat.emoji}</span>
+          <span>{cat.label}</span>
+        </span>
+
+        {/* Question */}
+        <h3 className="text-sm font-semibold text-gray-900 leading-snug">
+          {topic.question}
+        </h3>
+
+        {/* Assessment */}
+        {topic.llm_perspective && (
+          <div>
+            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Assessment</h4>
+            <div className="text-xs text-gray-700 leading-relaxed">
+              <MarkdownContent content={topic.llm_perspective} />
+            </div>
+          </div>
+        )}
+
+        {/* Arguments */}
+        {(argsFor.length > 0 || argsAgainst.length > 0) && (
+          <div className="space-y-3">
+            {argsFor.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-emerald-700 mb-1.5">Why it could work</h4>
+                <ul className="space-y-1">
+                  {argsFor.map((arg) => (
+                    <li key={arg.id} className="bg-emerald-50 border border-emerald-100 rounded-lg p-2 text-xs text-gray-700">
+                      {arg.summary}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {argsAgainst.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-red-700 mb-1.5">Why it can&#39;t work</h4>
+                <ul className="space-y-1">
+                  {argsAgainst.map((arg) => (
+                    <li key={arg.id} className="bg-red-50 border border-red-100 rounded-lg p-2 text-xs text-gray-700">
+                      {arg.summary}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Link to full topic */}
+        <a
+          href={`/topic/${topic.slug}`}
+          className="block text-center text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+        >
+          View full topic page →
+        </a>
+      </div>
+    </div>
+  );
+}
+
 export function Chat({
   initialQuestion,
   conversationId: initialConversationId,
   existingMessages,
+  topicSlug: initialTopicSlug,
 }: {
   initialQuestion?: string;
   conversationId?: string;
   existingMessages?: ChatMessage[];
+  topicSlug?: string;
 }) {
   const [messages, setMessages] = useState<DisplayItem[]>(
     existingMessages || []
@@ -167,10 +264,36 @@ export function Chat({
     question: string;
     category: number;
   } | null>(null);
+  const [topicData, setTopicData] = useState<TopicData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const router = useRouter();
   const startedRef = useRef(false);
+
+  const fetchTopicData = useCallback(async (slug: string) => {
+    try {
+      const res = await fetch(`/api/topics/${slug}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTopicData(data);
+      }
+    } catch {
+      // Silently fail — topic panel is supplementary
+    }
+  }, []);
+
+  // Fetch topic data when an initial topicSlug is provided
+  useEffect(() => {
+    if (initialTopicSlug) {
+      fetchTopicData(initialTopicSlug);
+    }
+  }, [initialTopicSlug, fetchTopicData]);
+
+  // Fetch/refresh topic data when a topic is categorized
+  useEffect(() => {
+    if (categorizedTopic?.slug) {
+      fetchTopicData(categorizedTopic.slug);
+    }
+  }, [categorizedTopic, fetchTopicData]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -428,31 +551,15 @@ export function Chat({
           );
         })}
 
-        {categorizedTopic && (
-          <div className="flex justify-center">
-            <button
-              onClick={() =>
-                router.push(`/topic/${categorizedTopic.slug}`)
-              }
-              className="px-4 py-3 rounded-xl bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition text-sm"
-            >
-              <span className="font-medium text-indigo-700">
-                Topic created!
-              </span>{" "}
-              <span className="text-indigo-600 underline">
-                View &quot;{categorizedTopic.question}&quot; →
-              </span>
-            </button>
-          </div>
-        )}
-
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Web search sidebar */}
-      {webSearch.totalSearches > 0 && (
+      {/* Right sidebar: topic panel takes priority, otherwise web search */}
+      {topicData ? (
+        <TopicPanel topicData={topicData} />
+      ) : webSearch.totalSearches > 0 ? (
         <WebSearchSidebar webSearch={webSearch} />
-      )}
+      ) : null}
       </div>
 
       {/* Input area */}
