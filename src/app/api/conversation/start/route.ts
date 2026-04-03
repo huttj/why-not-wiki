@@ -69,7 +69,7 @@ export async function POST(request: Request) {
             system: SYSTEM_PROMPT,
             tools: [
               ...TOOL_DEFINITIONS,
-              { type: "web_search_20250305", name: "web_search", max_uses: 3 },
+              { type: "web_search_20250305", name: "web_search", max_uses: 1 },
             ] as Anthropic.Tool[],
             messages,
             stream: true,
