@@ -35,8 +35,9 @@ export async function POST(request: Request) {
     .single();
 
   if (convError) {
+    console.error("Conversation insert error:", convError);
     return NextResponse.json(
-      { error: "Failed to create conversation" },
+      { error: "Failed to create conversation", details: convError.message },
       { status: 500 }
     );
   }
