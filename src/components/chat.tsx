@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, useCallback } from "react";
 import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
@@ -25,13 +24,13 @@ interface Citation {
   page_age: string | null;
 }
 
-interface WebSearchMessage {
-  type: "web_search";
-  searching: boolean;
+type DisplayItem = ChatMessage | StatusMessage | ErrorMessage;
+
+interface WebSearchState {
+  totalSearches: number;
+  completedSearches: number;
   citations: Citation[];
 }
-
-type DisplayItem = ChatMessage | StatusMessage | ErrorMessage | WebSearchMessage;
 
 function MarkdownContent({ content }: { content: string }) {
   return (
@@ -84,66 +83,157 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
-function WebSearchInline({ item }: { item: WebSearchMessage }) {
-  const label = item.searching ? "Searching the web..." : "Searched the web";
+function WebSearchSidebar({ webSearch }: { webSearch: WebSearchState }) {
+  const isSearching = webSearch.completedSearches < webSearch.totalSearches;
+  const count = webSearch.totalSearches;
+  const label = isSearching
+    ? `Searching the web${count > 1 ? ` x${count}` : ""}...`
+    : `Searched the web${count > 1 ? ` x${count}` : ""}`;
 
   return (
-    <details className="group w-full max-w-[85%] md:max-w-[70%]">
-      <summary className="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-700 transition px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 select-none">
-        {item.searching ? (
-          <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
-        ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 shrink-0 text-gray-400">
-            <path d="M6.75 8.25a.75.75 0 0 0-1.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5Zm7.5 0a.75.75 0 0 0-1.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5ZM8 9.5A1.25 1.25 0 1 0 8 12a1.25 1.25 0 0 0 0-2.5ZM10.75 10.75a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0ZM10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
-          </svg>
-        )}
-        <span>{label}</span>
-        {item.citations.length > 0 && (
-          <>
-            <span className="text-gray-300">·</span>
-            <span>{item.citations.length} source{item.citations.length !== 1 ? "s" : ""}</span>
-          </>
-        )}
-        {item.citations.length > 0 && (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 transition-transform group-open:rotate-180 ml-auto">
-            <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-          </svg>
-        )}
-      </summary>
-      {item.citations.length > 0 && (
-        <ul className="mt-2 space-y-1 pl-1">
-          {item.citations.map((c, i) => {
-            let hostname = "";
-            try {
-              hostname = new URL(c.url).hostname.replace(/^www\./, "");
-            } catch {
-              hostname = c.url;
-            }
-            return (
-              <li key={i}>
-                <a
-                  href={c.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition text-xs group/link"
-                >
-                  <span className="text-gray-400 shrink-0 mt-0.5">{i + 1}.</span>
-                  <span className="min-w-0">
-                    <span className="text-gray-700 font-medium line-clamp-1 group-hover/link:text-indigo-600 transition">
-                      {c.title || hostname}
+    <div className="w-64 shrink-0 border-l border-gray-200 bg-gray-50/50 overflow-y-auto">
+      <div className="px-4 py-4">
+        <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+          {isSearching ? (
+            <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 shrink-0 text-gray-400">
+              <path fillRule="evenodd" d="M9 3.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11ZM2 9a7 7 0 1 1 12.45 4.39l3.58 3.58a.75.75 0 1 1-1.06 1.06l-3.58-3.58A7 7 0 0 1 2 9Z" clipRule="evenodd" />
+            </svg>
+          )}
+          <span className="font-medium">{label}</span>
+        </div>
+        {webSearch.citations.length > 0 && (
+          <ul className="space-y-1">
+            {webSearch.citations.map((c, i) => {
+              let hostname = "";
+              try {
+                hostname = new URL(c.url).hostname.replace(/^www\./, "");
+              } catch {
+                hostname = c.url;
+              }
+              return (
+                <li key={i}>
+                  <a
+                    href={c.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition text-xs group/link"
+                  >
+                    <span className="text-gray-400 shrink-0 mt-0.5">{i + 1}.</span>
+                    <span className="min-w-0">
+                      <span className="text-gray-700 font-medium line-clamp-1 group-hover/link:text-indigo-600 transition">
+                        {c.title || hostname}
+                      </span>
+                      <span className="text-gray-400 block truncate text-[11px]">
+                        {hostname}
+                        {c.page_age ? ` · ${c.page_age}` : ""}
+                      </span>
                     </span>
-                    <span className="text-gray-400 block truncate text-[11px]">
-                      {hostname}
-                      {c.page_age ? ` · ${c.page_age}` : ""}
-                    </span>
-                  </span>
-                </a>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </details>
+                  </a>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+interface TopicData {
+  topic: {
+    id: string;
+    question: string;
+    slug: string;
+    category: 1 | 2 | 3;
+    summary: string | null;
+    llm_perspective: string | null;
+    created_at: string;
+    updated_at: string;
+  };
+  arguments: Array<{
+    id: string;
+    position: "for" | "against";
+    summary: string;
+  }>;
+}
+
+const CATEGORY_INFO: Record<number, { label: string; emoji: string; color: string }> = {
+  1: { label: "Can't work", emoji: "\u274C", color: "bg-red-100 text-red-800 border-red-200" },
+  2: { label: "Someone's on it", emoji: "\uD83D\uDC4D", color: "bg-amber-100 text-amber-800 border-amber-200" },
+  3: { label: "Novel idea", emoji: "\u2705", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
+};
+
+function TopicPanel({ topicData }: { topicData: TopicData }) {
+  const { topic } = topicData;
+  const cat = CATEGORY_INFO[topic.category];
+  const argsFor = topicData.arguments.filter((a) => a.position === "for");
+  const argsAgainst = topicData.arguments.filter((a) => a.position === "against");
+
+  return (
+    <div className="w-80 shrink-0 border-l border-gray-200 bg-white overflow-y-auto">
+      <div className="px-4 py-4 space-y-4">
+        {/* Category badge */}
+        <span className={`inline-flex items-center gap-1.5 rounded-full border font-medium px-2.5 py-1 text-xs ${cat.color}`}>
+          <span>{cat.emoji}</span>
+          <span>{cat.label}</span>
+        </span>
+
+        {/* Question */}
+        <h3 className="text-sm font-semibold text-gray-900 leading-snug">
+          {topic.question}
+        </h3>
+
+        {/* Assessment */}
+        {topic.llm_perspective && (
+          <div>
+            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Assessment</h4>
+            <div className="text-xs text-gray-700 leading-relaxed">
+              <MarkdownContent content={topic.llm_perspective} />
+            </div>
+          </div>
+        )}
+
+        {/* Arguments */}
+        {(argsFor.length > 0 || argsAgainst.length > 0) && (
+          <div className="space-y-3">
+            {argsFor.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-emerald-700 mb-1.5">Why it could work</h4>
+                <ul className="space-y-1">
+                  {argsFor.map((arg) => (
+                    <li key={arg.id} className="bg-emerald-50 border border-emerald-100 rounded-lg p-2 text-xs text-gray-700">
+                      {arg.summary}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {argsAgainst.length > 0 && (
+              <div>
+                <h4 className="text-xs font-medium text-red-700 mb-1.5">Why it can&#39;t work</h4>
+                <ul className="space-y-1">
+                  {argsAgainst.map((arg) => (
+                    <li key={arg.id} className="bg-red-50 border border-red-100 rounded-lg p-2 text-xs text-gray-700">
+                      {arg.summary}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Link to full topic */}
+        <a
+          href={`/topic/${topic.slug}`}
+          className="block text-center text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+        >
+          View full topic page →
+        </a>
+      </div>
+    </div>
   );
 }
 
@@ -151,26 +241,59 @@ export function Chat({
   initialQuestion,
   conversationId: initialConversationId,
   existingMessages,
+  topicSlug: initialTopicSlug,
 }: {
   initialQuestion?: string;
   conversationId?: string;
   existingMessages?: ChatMessage[];
+  topicSlug?: string;
 }) {
   const [messages, setMessages] = useState<DisplayItem[]>(
     existingMessages || []
   );
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
+  const [webSearch, setWebSearch] = useState<WebSearchState>({
+    totalSearches: 0,
+    completedSearches: 0,
+    citations: [],
+  });
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [categorizedTopic, setCategorizedTopic] = useState<{
     slug: string;
     question: string;
     category: number;
   } | null>(null);
+  const [topicData, setTopicData] = useState<TopicData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const router = useRouter();
   const startedRef = useRef(false);
+
+  const fetchTopicData = useCallback(async (slug: string) => {
+    try {
+      const res = await fetch(`/api/topics/${slug}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTopicData(data);
+      }
+    } catch {
+      // Silently fail — topic panel is supplementary
+    }
+  }, []);
+
+  // Fetch topic data when an initial topicSlug is provided
+  useEffect(() => {
+    if (initialTopicSlug) {
+      fetchTopicData(initialTopicSlug);
+    }
+  }, [initialTopicSlug, fetchTopicData]);
+
+  // Fetch/refresh topic data when a topic is categorized
+  useEffect(() => {
+    if (categorizedTopic?.slug) {
+      fetchTopicData(categorizedTopic.slug);
+    }
+  }, [categorizedTopic, fetchTopicData]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -188,6 +311,7 @@ export function Chat({
   async function startConversation(question: string) {
     setIsStreaming(true);
     setMessages([{ role: "user", content: question }]);
+    setWebSearch({ totalSearches: 0, completedSearches: 0, citations: [] });
 
     try {
       const res = await fetch("/api/conversation/start", {
@@ -223,6 +347,7 @@ export function Chat({
     if (textareaRef.current) textareaRef.current.style.height = "auto";
     setIsStreaming(true);
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
+    setWebSearch({ totalSearches: 0, completedSearches: 0, citations: [] });
 
     try {
       const res = await fetch("/api/conversation/reply", {
@@ -313,25 +438,16 @@ export function Chat({
               { type: "status", message: data.message },
             ]);
           } else if (data.type === "web_search_start") {
-            setMessages((prev) => [
+            setWebSearch((prev) => ({
               ...prev,
-              { type: "web_search", searching: true, citations: [] },
-            ]);
+              totalSearches: prev.totalSearches + 1,
+            }));
           } else if (data.type === "web_search_complete") {
-            setMessages((prev) => {
-              const updated = [...prev];
-              const lastSearch = updated.findLastIndex(
-                (m) => "type" in m && m.type === "web_search" && m.searching
-              );
-              if (lastSearch >= 0) {
-                updated[lastSearch] = {
-                  type: "web_search",
-                  searching: false,
-                  citations: data.citations || [],
-                };
-              }
-              return updated;
-            });
+            setWebSearch((prev) => ({
+              ...prev,
+              completedSearches: prev.completedSearches + 1,
+              citations: [...prev.citations, ...(data.citations || [])],
+            }));
           } else if (data.type === "categorized") {
             setCategorizedTopic(data.topic);
           } else if (data.type === "done") {
@@ -369,17 +485,10 @@ export function Chat({
 
   return (
     <div className="flex flex-col h-full">
+      <div className="flex flex-1 min-h-0">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.map((item, i) => {
-          if ("type" in item && item.type === "web_search") {
-            return (
-              <div key={i} className="flex justify-start">
-                <WebSearchInline item={item} />
-              </div>
-            );
-          }
-
           if ("type" in item && item.type === "status") {
             return (
               <div key={i} className="flex justify-center">
@@ -442,25 +551,15 @@ export function Chat({
           );
         })}
 
-        {categorizedTopic && (
-          <div className="flex justify-center">
-            <button
-              onClick={() =>
-                router.push(`/topic/${categorizedTopic.slug}`)
-              }
-              className="px-4 py-3 rounded-xl bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition text-sm"
-            >
-              <span className="font-medium text-indigo-700">
-                Topic created!
-              </span>{" "}
-              <span className="text-indigo-600 underline">
-                View &quot;{categorizedTopic.question}&quot; →
-              </span>
-            </button>
-          </div>
-        )}
-
         <div ref={messagesEndRef} />
+      </div>
+
+      {/* Right sidebar: topic panel takes priority, otherwise web search */}
+      {topicData ? (
+        <TopicPanel topicData={topicData} />
+      ) : webSearch.totalSearches > 0 ? (
+        <WebSearchSidebar webSearch={webSearch} />
+      ) : null}
       </div>
 
       {/* Input area */}
