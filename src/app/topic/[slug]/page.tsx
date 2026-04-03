@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { CategoryBadge } from "@/components/category-badge";
+import { TopicMarkdown } from "@/components/topic-markdown";
 import type { Topic, Argument, Conversation, Message } from "@/lib/types";
 import { timeAgo } from "@/lib/utils";
 
@@ -77,9 +78,9 @@ export default async function TopicPage({
             Assessment
           </h2>
           <div className="bg-white rounded-xl border border-gray-200 p-5">
-            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-              {topic.llm_perspective}
-            </p>
+            <div className="text-gray-700 leading-relaxed">
+              <TopicMarkdown content={topic.llm_perspective} />
+            </div>
           </div>
         </section>
       )}

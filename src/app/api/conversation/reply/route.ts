@@ -103,6 +103,15 @@ export async function POST(request: Request) {
                   name: event.content_block.name,
                   input: "",
                 };
+              } else if ((event.content_block as { type: string }).type === "server_tool_use") {
+                const block = event.content_block as { type: string; name: string };
+                if (block.name === "web_search") {
+                  controller.enqueue(
+                    encoder.encode(
+                      `data: ${JSON.stringify({ type: "status", message: "Searching the web..." })}\n\n`
+                    )
+                  );
+                }
               }
             } else if (event.type === "content_block_delta") {
               if (event.delta.type === "text_delta") {
@@ -129,6 +138,14 @@ export async function POST(request: Request) {
           }
 
           if (stopReason === "tool_use" && toolUseBlocks.length > 0) {
+            // Signal client to finalize current text block before tool execution
+            if (currentText) {
+              controller.enqueue(
+                encoder.encode(
+                  `data: ${JSON.stringify({ type: "text_end" })}\n\n`
+                )
+              );
+            }
             const assistantContent: Anthropic.ContentBlockParam[] = [];
             if (currentText) {
               assistantContent.push({ type: "text", text: currentText });

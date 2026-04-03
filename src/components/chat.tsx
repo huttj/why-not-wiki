@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import ReactMarkdown from "react-markdown";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -19,6 +20,57 @@ interface ErrorMessage {
 }
 
 type DisplayItem = ChatMessage | StatusMessage | ErrorMessage;
+
+function MarkdownContent({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      components={{
+        p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+        strong: ({ children }) => (
+          <strong className="font-semibold">{children}</strong>
+        ),
+        ul: ({ children }) => (
+          <ul className="list-disc list-inside mb-3 last:mb-0 space-y-1">
+            {children}
+          </ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="list-decimal list-inside mb-3 last:mb-0 space-y-1">
+            {children}
+          </ol>
+        ),
+        li: ({ children }) => <li className="leading-relaxed">{children}</li>,
+        h3: ({ children }) => (
+          <h3 className="font-semibold text-base mb-2 mt-3 first:mt-0">
+            {children}
+          </h3>
+        ),
+        h2: ({ children }) => (
+          <h2 className="font-bold text-base mb-2 mt-3 first:mt-0">
+            {children}
+          </h2>
+        ),
+        a: ({ href, children }) => (
+          <a
+            href={href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-indigo-600 underline hover:text-indigo-800"
+          >
+            {children}
+          </a>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="border-l-2 border-gray-300 pl-3 italic text-gray-600 mb-3 last:mb-0">
+            {children}
+          </blockquote>
+        ),
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  );
+}
 
 export function Chat({
   initialQuestion,
@@ -133,9 +185,7 @@ export function Chat({
 
     const decoder = new TextDecoder();
     let assistantText = "";
-
-    // Add initial empty assistant message
-    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+    let needsNewMessage = true;
 
     let buffer = "";
     while (true) {
@@ -154,6 +204,15 @@ export function Chat({
           const data = JSON.parse(jsonStr);
 
           if (data.type === "text") {
+            if (needsNewMessage) {
+              // Start a new assistant message
+              assistantText = "";
+              setMessages((prev) => [
+                ...prev,
+                { role: "assistant", content: "" },
+              ]);
+              needsNewMessage = false;
+            }
             assistantText += data.text;
             setMessages((prev) => {
               const updated = [...prev];
@@ -168,6 +227,9 @@ export function Chat({
               }
               return updated;
             });
+          } else if (data.type === "text_end") {
+            // Tool call is about to happen — finalize current text block
+            needsNewMessage = true;
           } else if (data.type === "status") {
             setMessages((prev) => [
               ...prev,
@@ -255,12 +317,21 @@ export function Chat({
                     : "bg-gray-100 text-gray-900 rounded-bl-md"
                 }`}
               >
-                <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                  {msg.content}
-                  {!isUser && msg.content === "" && isStreaming && (
-                    <span className="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-0.5" />
-                  )}
-                </div>
+                {isUser ? (
+                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    {msg.content}
+                  </div>
+                ) : (
+                  <div className="text-sm leading-relaxed prose-sm">
+                    {msg.content ? (
+                      <MarkdownContent content={msg.content} />
+                    ) : (
+                      isStreaming && (
+                        <span className="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-0.5" />
+                      )
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           );
