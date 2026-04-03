@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
+import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CategoryBadge } from "@/components/category-badge";
 import { TopicMarkdown } from "@/components/topic-markdown";
@@ -7,6 +8,47 @@ import type { Topic, Argument, Conversation, Message } from "@/lib/types";
 import { timeAgo } from "@/lib/utils";
 
 export const revalidate = 60;
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  const { data: topic } = await supabase
+    .from("topics")
+    .select("question, summary, slug")
+    .eq("slug", slug)
+    .single();
+
+  if (!topic) {
+    return {};
+  }
+
+  const title = `${topic.question} — WhyNot?`;
+  const description =
+    topic.summary ||
+    "A naive question explored and categorized through conversation.";
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "article",
+      url: `/topic/${topic.slug}`,
+      siteName: "WhyNot?",
+    },
+    twitter: {
+      card: "summary",
+      title,
+      description,
+    },
+  };
+}
 
 export default async function TopicPage({
   params,
