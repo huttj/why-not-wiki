@@ -107,6 +107,24 @@ export async function POST(request: Request) {
                     )
                   );
                 }
+              } else if ((event.content_block as { type: string }).type === "web_search_tool_result") {
+                // Extract citations from web search results
+                const block = event.content_block as {
+                  type: string;
+                  content: Array<{ type: string; url: string; title: string; page_age: string | null }> | { type: string; error_code: string };
+                };
+                if (Array.isArray(block.content)) {
+                  const citations = block.content
+                    .filter((r) => r.type === "web_search_result")
+                    .map((r) => ({ url: r.url, title: r.title, page_age: r.page_age }));
+                  if (citations.length > 0) {
+                    controller.enqueue(
+                      encoder.encode(
+                        `data: ${JSON.stringify({ type: "citations", citations })}\n\n`
+                      )
+                    );
+                  }
+                }
               }
             } else if (event.type === "content_block_delta") {
               if (event.delta.type === "text_delta") {
