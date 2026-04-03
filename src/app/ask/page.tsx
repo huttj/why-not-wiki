@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { Chat } from "@/components/chat";
 
 export default function AskPage() {
+  return (
+    <Suspense fallback={null}>
+      <AskPageContent />
+    </Suspense>
+  );
+}
+
+function AskPageContent() {
   const searchParams = useSearchParams();
   const topicQuestion = searchParams.get("q");
   const topicSlug = searchParams.get("topic");
