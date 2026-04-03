@@ -1,9 +1,10 @@
-import { createAdminClient } from "@/lib/supabase/admin";
+import { SupabaseClient } from "@supabase/supabase-js";
 import { slugify } from "@/lib/utils";
 
-export async function handleSearchArchive(query: string) {
-  const supabase = createAdminClient();
-
+export async function handleSearchArchive(
+  supabase: SupabaseClient,
+  query: string
+) {
   const { data: topics, error } = await supabase
     .from("topics")
     .select("id, question, slug, category, summary")
@@ -24,18 +25,19 @@ export async function handleSearchArchive(query: string) {
   return topics;
 }
 
-export async function handleCategorizeTopic(input: {
-  question: string;
-  category: 1 | 2 | 3;
-  reasoning: string;
-  arguments_for: string[];
-  arguments_against: string[];
-  is_new_topic: boolean;
-  existing_topic_id?: string;
-  conversation_id: string;
-}) {
-  const supabase = createAdminClient();
-
+export async function handleCategorizeTopic(
+  supabase: SupabaseClient,
+  input: {
+    question: string;
+    category: 1 | 2 | 3;
+    reasoning: string;
+    arguments_for: string[];
+    arguments_against: string[];
+    is_new_topic: boolean;
+    existing_topic_id?: string;
+    conversation_id: string;
+  }
+) {
   let topicId: string;
 
   if (input.is_new_topic) {
