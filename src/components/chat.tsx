@@ -25,12 +25,13 @@ interface Citation {
   page_age: string | null;
 }
 
-interface CitationsMessage {
-  type: "citations";
+interface WebSearchState {
+  totalSearches: number;
+  completedSearches: number;
   citations: Citation[];
 }
 
-type DisplayItem = ChatMessage | StatusMessage | ErrorMessage | CitationsMessage;
+type DisplayItem = ChatMessage | StatusMessage | ErrorMessage;
 
 function MarkdownContent({ content }: { content: string }) {
   return (
@@ -83,50 +84,60 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
-function CitationsList({ citations }: { citations: Citation[] }) {
+function WebSearchSidebar({ webSearch }: { webSearch: WebSearchState }) {
+  const isSearching = webSearch.completedSearches < webSearch.totalSearches;
+  const label = isSearching
+    ? `Searching the web${webSearch.totalSearches > 1 ? ` x${webSearch.totalSearches}` : ""}...`
+    : `Searched the web${webSearch.totalSearches > 1 ? ` x${webSearch.totalSearches}` : ""}`;
+
   return (
-    <details className="group w-full max-w-[85%] md:max-w-[70%]">
-      <summary className="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-700 transition px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 select-none">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 shrink-0">
-          <path fillRule="evenodd" d="M4.25 5.5a.75.75 0 0 0-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75v-4a.75.75 0 0 1 1.5 0v4A2.25 2.25 0 0 1 12.75 17h-8.5A2.25 2.25 0 0 1 2 14.75v-8.5A2.25 2.25 0 0 1 4.25 4h5a.75.75 0 0 1 0 1.5h-5Zm7.97-2.22a.75.75 0 0 1 1.06 0l3.5 3.5a.75.75 0 1 1-1.06 1.06l-2.22-2.22V11a.75.75 0 0 1-1.5 0V5.56L9.78 7.78a.75.75 0 0 1-1.06-1.06l3.5-3.5Z" clipRule="evenodd" />
-        </svg>
-        <span>{citations.length} source{citations.length !== 1 ? "s" : ""}</span>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 transition-transform group-open:rotate-180">
-          <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-        </svg>
-      </summary>
-      <ul className="mt-2 space-y-1.5 pl-1">
-        {citations.map((c, i) => {
-          let hostname = "";
-          try {
-            hostname = new URL(c.url).hostname.replace(/^www\./, "");
-          } catch {
-            hostname = c.url;
-          }
-          return (
-            <li key={i}>
-              <a
-                href={c.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-xs group/link"
-              >
-                <span className="text-gray-400 shrink-0 mt-0.5">{i + 1}.</span>
-                <span className="min-w-0">
-                  <span className="text-gray-800 font-medium line-clamp-1 group-hover/link:text-indigo-600 transition">
-                    {c.title || hostname}
+    <div className="border-l border-gray-200 bg-gray-50/50 w-72 shrink-0 overflow-y-auto">
+      <div className="px-4 py-3 border-b border-gray-200">
+        <div className="flex items-center gap-2 text-xs font-medium text-gray-600">
+          {isSearching ? (
+            <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 shrink-0 text-green-500">
+              <path fillRule="evenodd" d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Zm3.857-9.809a.75.75 0 0 0-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 1 0-1.06 1.061l2.5 2.5a.75.75 0 0 0 1.137-.089l4-5.5Z" clipRule="evenodd" />
+            </svg>
+          )}
+          <span>{label}</span>
+        </div>
+      </div>
+      {webSearch.citations.length > 0 && (
+        <ul className="px-2 py-2 space-y-0.5">
+          {webSearch.citations.map((c, i) => {
+            let hostname = "";
+            try {
+              hostname = new URL(c.url).hostname.replace(/^www\./, "");
+            } catch {
+              hostname = c.url;
+            }
+            return (
+              <li key={i}>
+                <a
+                  href={c.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 transition text-xs group/link"
+                >
+                  <span className="text-gray-400 shrink-0 mt-0.5">{i + 1}.</span>
+                  <span className="min-w-0">
+                    <span className="text-gray-700 font-medium line-clamp-1 group-hover/link:text-indigo-600 transition">
+                      {c.title || hostname}
+                    </span>
+                    <span className="text-gray-400 block truncate text-[11px]">
+                      {hostname}
+                      {c.page_age ? ` · ${c.page_age}` : ""}
+                    </span>
                   </span>
-                  <span className="text-gray-400 block truncate">
-                    {hostname}
-                    {c.page_age ? ` · ${c.page_age}` : ""}
-                  </span>
-                </span>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
-    </details>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 
@@ -145,12 +156,18 @@ export function Chat({
   const [input, setInput] = useState("");
   const [isStreaming, setIsStreaming] = useState(false);
   const [conversationId, setConversationId] = useState(initialConversationId);
+  const [webSearch, setWebSearch] = useState<WebSearchState>({
+    totalSearches: 0,
+    completedSearches: 0,
+    citations: [],
+  });
   const [categorizedTopic, setCategorizedTopic] = useState<{
     slug: string;
     question: string;
     category: number;
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
   const startedRef = useRef(false);
 
@@ -170,6 +187,7 @@ export function Chat({
   async function startConversation(question: string) {
     setIsStreaming(true);
     setMessages([{ role: "user", content: question }]);
+    setWebSearch({ totalSearches: 0, completedSearches: 0, citations: [] });
 
     try {
       const res = await fetch("/api/conversation/start", {
@@ -202,7 +220,9 @@ export function Chat({
 
     const userMessage = input.trim();
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setIsStreaming(true);
+    setWebSearch({ totalSearches: 0, completedSearches: 0, citations: [] });
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
 
     try {
@@ -293,11 +313,17 @@ export function Chat({
               ...prev,
               { type: "status", message: data.message },
             ]);
-          } else if (data.type === "citations") {
-            setMessages((prev) => [
+          } else if (data.type === "web_search_start") {
+            setWebSearch((prev) => ({
               ...prev,
-              { type: "citations", citations: data.citations },
-            ]);
+              totalSearches: prev.totalSearches + 1,
+            }));
+          } else if (data.type === "web_search_complete") {
+            setWebSearch((prev) => ({
+              ...prev,
+              completedSearches: prev.completedSearches + 1,
+              citations: [...prev.citations, ...(data.citations || [])],
+            }));
           } else if (data.type === "categorized") {
             setCategorizedTopic(data.topic);
           } else if (data.type === "done") {
@@ -335,6 +361,7 @@ export function Chat({
 
   return (
     <div className="flex flex-col h-full">
+      <div className="flex flex-1 min-h-0">
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.map((item, i) => {
@@ -344,14 +371,6 @@ export function Chat({
                 <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
                   {item.message}
                 </span>
-              </div>
-            );
-          }
-
-          if ("type" in item && item.type === "citations") {
-            return (
-              <div key={i} className="flex justify-start">
-                <CitationsList citations={item.citations} />
               </div>
             );
           }
@@ -429,13 +448,25 @@ export function Chat({
         <div ref={messagesEndRef} />
       </div>
 
+      {/* Web search sidebar */}
+      {webSearch.totalSearches > 0 && (
+        <WebSearchSidebar webSearch={webSearch} />
+      )}
+      </div>
+
       {/* Input area */}
       {conversationId && (
         <div className="border-t border-gray-200 bg-white px-4 py-3">
           <div className="max-w-3xl mx-auto flex gap-2">
             <textarea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                const ta = e.target;
+                ta.style.height = "auto";
+                ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Continue the discussion..."
               rows={1}
