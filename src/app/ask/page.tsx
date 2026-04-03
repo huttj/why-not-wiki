@@ -1,6 +1,7 @@
 "use client";
 
 import { Suspense, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { Chat } from "@/components/chat";
 
 export default function AskPage() {
@@ -12,7 +13,11 @@ export default function AskPage() {
 }
 
 function AskPageContent() {
-  const [question, setQuestion] = useState("");
+  const searchParams = useSearchParams();
+  const topicQuestion = searchParams.get("q");
+  const topicSlug = searchParams.get("topic");
+
+  const [question, setQuestion] = useState(topicQuestion || "");
   const [started, setStarted] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
@@ -24,7 +29,7 @@ function AskPageContent() {
   if (started) {
     return (
       <div className="h-[calc(100vh-4rem)] flex flex-col">
-        <Chat initialQuestion={question.trim()} />
+        <Chat initialQuestion={question.trim()} topicSlug={topicSlug || undefined} />
       </div>
     );
   }
@@ -32,11 +37,12 @@ function AskPageContent() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-20">
       <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">
-        Ask a question
+        {topicSlug ? "Continue the discussion" : "Ask a question"}
       </h1>
       <p className="text-gray-500 text-center mb-10">
-        What&apos;s something you&apos;ve always wondered about? Start with &ldquo;Why
-        can&apos;t we just...&rdquo;
+        {topicSlug
+          ? "Add your perspective to this topic."
+          : <>What&apos;s something you&apos;ve always wondered about? Start with &ldquo;Why can&apos;t we just...&rdquo;</>}
       </p>
 
       <form onSubmit={handleSubmit}>
