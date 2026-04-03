@@ -16,6 +16,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  // Ensure user exists in public.users (handles cases where the signup trigger
+  // did not fire, e.g. pre-existing auth users or trigger failures)
+  await supabase
+    .from("users")
+    .upsert({ id: user.id, email: user.email! }, { onConflict: "id" });
+
   const { question } = await request.json();
   if (!question || typeof question !== "string" || question.trim().length === 0) {
     return NextResponse.json(
