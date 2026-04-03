@@ -25,12 +25,13 @@ interface Citation {
   page_age: string | null;
 }
 
-interface CitationsMessage {
-  type: "citations";
+interface WebSearchMessage {
+  type: "web_search";
+  searching: boolean;
   citations: Citation[];
 }
 
-type DisplayItem = ChatMessage | StatusMessage | ErrorMessage | CitationsMessage;
+type DisplayItem = ChatMessage | StatusMessage | ErrorMessage | WebSearchMessage;
 
 function MarkdownContent({ content }: { content: string }) {
   return (
@@ -83,49 +84,65 @@ function MarkdownContent({ content }: { content: string }) {
   );
 }
 
-function CitationsList({ citations }: { citations: Citation[] }) {
+function WebSearchInline({ item }: { item: WebSearchMessage }) {
+  const label = item.searching ? "Searching the web..." : "Searched the web";
+
   return (
     <details className="group w-full max-w-[85%] md:max-w-[70%]">
       <summary className="flex items-center gap-2 cursor-pointer text-xs text-gray-500 hover:text-gray-700 transition px-3 py-1.5 rounded-lg bg-gray-50 border border-gray-200 select-none">
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 shrink-0">
-          <path fillRule="evenodd" d="M4.25 5.5a.75.75 0 0 0-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 0 0 .75-.75v-4a.75.75 0 0 1 1.5 0v4A2.25 2.25 0 0 1 12.75 17h-8.5A2.25 2.25 0 0 1 2 14.75v-8.5A2.25 2.25 0 0 1 4.25 4h5a.75.75 0 0 1 0 1.5h-5Zm7.97-2.22a.75.75 0 0 1 1.06 0l3.5 3.5a.75.75 0 1 1-1.06 1.06l-2.22-2.22V11a.75.75 0 0 1-1.5 0V5.56L9.78 7.78a.75.75 0 0 1-1.06-1.06l3.5-3.5Z" clipRule="evenodd" />
-        </svg>
-        <span>{citations.length} source{citations.length !== 1 ? "s" : ""}</span>
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 transition-transform group-open:rotate-180">
-          <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
-        </svg>
+        {item.searching ? (
+          <span className="inline-block w-3 h-3 border-2 border-gray-400 border-t-transparent rounded-full animate-spin shrink-0" />
+        ) : (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 shrink-0 text-gray-400">
+            <path d="M6.75 8.25a.75.75 0 0 0-1.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5Zm7.5 0a.75.75 0 0 0-1.5 0v4.5a.75.75 0 0 0 1.5 0v-4.5ZM8 9.5A1.25 1.25 0 1 0 8 12a1.25 1.25 0 0 0 0-2.5ZM10.75 10.75a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0ZM10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z" />
+          </svg>
+        )}
+        <span>{label}</span>
+        {item.citations.length > 0 && (
+          <>
+            <span className="text-gray-300">·</span>
+            <span>{item.citations.length} source{item.citations.length !== 1 ? "s" : ""}</span>
+          </>
+        )}
+        {item.citations.length > 0 && (
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3 transition-transform group-open:rotate-180 ml-auto">
+            <path fillRule="evenodd" d="M5.22 8.22a.75.75 0 0 1 1.06 0L10 11.94l3.72-3.72a.75.75 0 1 1 1.06 1.06l-4.25 4.25a.75.75 0 0 1-1.06 0L5.22 9.28a.75.75 0 0 1 0-1.06Z" clipRule="evenodd" />
+          </svg>
+        )}
       </summary>
-      <ul className="mt-2 space-y-1.5 pl-1">
-        {citations.map((c, i) => {
-          let hostname = "";
-          try {
-            hostname = new URL(c.url).hostname.replace(/^www\./, "");
-          } catch {
-            hostname = c.url;
-          }
-          return (
-            <li key={i}>
-              <a
-                href={c.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-start gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 transition text-xs group/link"
-              >
-                <span className="text-gray-400 shrink-0 mt-0.5">{i + 1}.</span>
-                <span className="min-w-0">
-                  <span className="text-gray-800 font-medium line-clamp-1 group-hover/link:text-indigo-600 transition">
-                    {c.title || hostname}
+      {item.citations.length > 0 && (
+        <ul className="mt-2 space-y-1 pl-1">
+          {item.citations.map((c, i) => {
+            let hostname = "";
+            try {
+              hostname = new URL(c.url).hostname.replace(/^www\./, "");
+            } catch {
+              hostname = c.url;
+            }
+            return (
+              <li key={i}>
+                <a
+                  href={c.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-start gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-50 transition text-xs group/link"
+                >
+                  <span className="text-gray-400 shrink-0 mt-0.5">{i + 1}.</span>
+                  <span className="min-w-0">
+                    <span className="text-gray-700 font-medium line-clamp-1 group-hover/link:text-indigo-600 transition">
+                      {c.title || hostname}
+                    </span>
+                    <span className="text-gray-400 block truncate text-[11px]">
+                      {hostname}
+                      {c.page_age ? ` · ${c.page_age}` : ""}
+                    </span>
                   </span>
-                  <span className="text-gray-400 block truncate">
-                    {hostname}
-                    {c.page_age ? ` · ${c.page_age}` : ""}
-                  </span>
-                </span>
-              </a>
-            </li>
-          );
-        })}
-      </ul>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      )}
     </details>
   );
 }
@@ -151,6 +168,7 @@ export function Chat({
     category: number;
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const router = useRouter();
   const startedRef = useRef(false);
 
@@ -202,6 +220,7 @@ export function Chat({
 
     const userMessage = input.trim();
     setInput("");
+    if (textareaRef.current) textareaRef.current.style.height = "auto";
     setIsStreaming(true);
     setMessages((prev) => [...prev, { role: "user", content: userMessage }]);
 
@@ -293,11 +312,26 @@ export function Chat({
               ...prev,
               { type: "status", message: data.message },
             ]);
-          } else if (data.type === "citations") {
+          } else if (data.type === "web_search_start") {
             setMessages((prev) => [
               ...prev,
-              { type: "citations", citations: data.citations },
+              { type: "web_search", searching: true, citations: [] },
             ]);
+          } else if (data.type === "web_search_complete") {
+            setMessages((prev) => {
+              const updated = [...prev];
+              const lastSearch = updated.findLastIndex(
+                (m) => "type" in m && m.type === "web_search" && m.searching
+              );
+              if (lastSearch >= 0) {
+                updated[lastSearch] = {
+                  type: "web_search",
+                  searching: false,
+                  citations: data.citations || [],
+                };
+              }
+              return updated;
+            });
           } else if (data.type === "categorized") {
             setCategorizedTopic(data.topic);
           } else if (data.type === "done") {
@@ -338,20 +372,20 @@ export function Chat({
       {/* Messages area */}
       <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
         {messages.map((item, i) => {
+          if ("type" in item && item.type === "web_search") {
+            return (
+              <div key={i} className="flex justify-start">
+                <WebSearchInline item={item} />
+              </div>
+            );
+          }
+
           if ("type" in item && item.type === "status") {
             return (
               <div key={i} className="flex justify-center">
                 <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
                   {item.message}
                 </span>
-              </div>
-            );
-          }
-
-          if ("type" in item && item.type === "citations") {
-            return (
-              <div key={i} className="flex justify-start">
-                <CitationsList citations={item.citations} />
               </div>
             );
           }
@@ -434,8 +468,14 @@ export function Chat({
         <div className="border-t border-gray-200 bg-white px-4 py-3">
           <div className="max-w-3xl mx-auto flex gap-2">
             <textarea
+              ref={textareaRef}
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => {
+                setInput(e.target.value);
+                const ta = e.target;
+                ta.style.height = "auto";
+                ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
+              }}
               onKeyDown={handleKeyDown}
               placeholder="Continue the discussion..."
               rows={1}
