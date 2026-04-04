@@ -165,75 +165,96 @@ const CATEGORY_INFO: Record<number, { label: string; emoji: string; color: strin
   3: { label: "Novel idea", emoji: "\u2705", color: "bg-emerald-100 text-emerald-800 border-emerald-200" },
 };
 
-function TopicPanel({ topicData }: { topicData: TopicData }) {
+function TopicPanelContent({ topicData }: { topicData: TopicData }) {
   const { topic } = topicData;
   const cat = CATEGORY_INFO[topic.category];
   const argsFor = topicData.arguments.filter((a) => a.position === "for");
   const argsAgainst = topicData.arguments.filter((a) => a.position === "against");
 
   return (
-    <div className="w-80 shrink-0 border-l border-gray-200 bg-white overflow-y-auto">
-      <div className="px-4 py-4 space-y-4">
-        {/* Category badge */}
-        <span className={`inline-flex items-center gap-1.5 rounded-full border font-medium px-2.5 py-1 text-xs ${cat.color}`}>
-          <span>{cat.emoji}</span>
-          <span>{cat.label}</span>
-        </span>
+    <div className="px-4 py-4 space-y-4">
+      {/* Category badge */}
+      <span className={`inline-flex items-center gap-1.5 rounded-full border font-medium px-2.5 py-1 text-xs ${cat.color}`}>
+        <span>{cat.emoji}</span>
+        <span>{cat.label}</span>
+      </span>
 
-        {/* Question */}
-        <h3 className="text-sm font-semibold text-gray-900 leading-snug">
-          {topic.question}
-        </h3>
+      {/* Question */}
+      <h3 className="text-sm font-semibold text-gray-900 leading-snug">
+        {topic.question}
+      </h3>
 
-        {/* Assessment */}
-        {topic.llm_perspective && (
-          <div>
-            <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Assessment</h4>
-            <div className="text-xs text-gray-700 leading-relaxed">
-              <MarkdownContent content={topic.llm_perspective} />
+      {/* Assessment */}
+      {topic.llm_perspective && (
+        <div>
+          <h4 className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1.5">Assessment</h4>
+          <div className="text-xs text-gray-700 leading-relaxed">
+            <MarkdownContent content={topic.llm_perspective} />
+          </div>
+        </div>
+      )}
+
+      {/* Arguments */}
+      {(argsFor.length > 0 || argsAgainst.length > 0) && (
+        <div className="space-y-3">
+          {argsFor.length > 0 && (
+            <div>
+              <h4 className="text-xs font-medium text-emerald-700 mb-1.5">Why it could work</h4>
+              <ul className="space-y-1">
+                {argsFor.map((arg) => (
+                  <li key={arg.id} className="bg-emerald-50 border border-emerald-100 rounded-lg p-2 text-xs text-gray-700">
+                    {arg.summary}
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-        )}
+          )}
+          {argsAgainst.length > 0 && (
+            <div>
+              <h4 className="text-xs font-medium text-red-700 mb-1.5">Why it can&#39;t work</h4>
+              <ul className="space-y-1">
+                {argsAgainst.map((arg) => (
+                  <li key={arg.id} className="bg-red-50 border border-red-100 rounded-lg p-2 text-xs text-gray-700">
+                    {arg.summary}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
-        {/* Arguments */}
-        {(argsFor.length > 0 || argsAgainst.length > 0) && (
-          <div className="space-y-3">
-            {argsFor.length > 0 && (
-              <div>
-                <h4 className="text-xs font-medium text-emerald-700 mb-1.5">Why it could work</h4>
-                <ul className="space-y-1">
-                  {argsFor.map((arg) => (
-                    <li key={arg.id} className="bg-emerald-50 border border-emerald-100 rounded-lg p-2 text-xs text-gray-700">
-                      {arg.summary}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {argsAgainst.length > 0 && (
-              <div>
-                <h4 className="text-xs font-medium text-red-700 mb-1.5">Why it can&#39;t work</h4>
-                <ul className="space-y-1">
-                  {argsAgainst.map((arg) => (
-                    <li key={arg.id} className="bg-red-50 border border-red-100 rounded-lg p-2 text-xs text-gray-700">
-                      {arg.summary}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Link to full topic */}
-        <a
-          href={`/topic/${topic.slug}`}
-          className="block text-center text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
-        >
-          View full topic page →
-        </a>
-      </div>
+      {/* Link to full topic */}
+      <a
+        href={`/topic/${topic.slug}`}
+        className="block text-center text-xs text-indigo-600 hover:text-indigo-800 font-medium transition"
+      >
+        View full topic page →
+      </a>
     </div>
+  );
+}
+
+function TopicPopover({ topicData, open, onClose }: { topicData: TopicData; open: boolean; onClose: () => void }) {
+  if (!open) return null;
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div className="fixed inset-0 bg-black/30 z-40" onClick={onClose} />
+      {/* Popover panel */}
+      <div className="fixed inset-x-4 top-20 bottom-20 z-50 bg-white rounded-2xl shadow-xl overflow-y-auto">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200">
+          <h3 className="text-sm font-semibold text-gray-900">Topic Details</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5">
+              <path d="M6.28 5.22a.75.75 0 0 0-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 1 0 1.06 1.06L10 11.06l3.72 3.72a.75.75 0 1 0 1.06-1.06L11.06 10l3.72-3.72a.75.75 0 0 0-1.06-1.06L10 8.94 6.28 5.22Z" />
+            </svg>
+          </button>
+        </div>
+        <TopicPanelContent topicData={topicData} />
+      </div>
+    </>
   );
 }
 
@@ -242,11 +263,13 @@ export function Chat({
   conversationId: initialConversationId,
   existingMessages,
   topicSlug: initialTopicSlug,
+  topicId,
 }: {
   initialQuestion?: string;
   conversationId?: string;
   existingMessages?: ChatMessage[];
   topicSlug?: string;
+  topicId?: string;
 }) {
   const [messages, setMessages] = useState<DisplayItem[]>(
     existingMessages || []
@@ -265,6 +288,7 @@ export function Chat({
     category: number;
   } | null>(null);
   const [topicData, setTopicData] = useState<TopicData | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const startedRef = useRef(false);
@@ -310,14 +334,19 @@ export function Chat({
 
   async function startConversation(question: string) {
     setIsStreaming(true);
-    setMessages([{ role: "user", content: question }]);
+    // Show faux topic-context message if this is a topic discussion, otherwise show the user message
+    if (topicId) {
+      setMessages([]);
+    } else {
+      setMessages([{ role: "user", content: question }]);
+    }
     setWebSearch({ totalSearches: 0, completedSearches: 0, citations: [] });
 
     try {
       const res = await fetch("/api/conversation/start", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ question }),
+        body: JSON.stringify({ question, ...(topicId ? { topic_id: topicId } : {}) }),
       });
 
       if (!res.ok) {
@@ -483,113 +512,156 @@ export function Chat({
     }
   }
 
+  const hasTopicPanel = !!topicData;
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex flex-1 min-h-0">
-      {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-        {messages.map((item, i) => {
-          if ("type" in item && item.type === "status") {
-            return (
-              <div key={i} className="flex justify-center">
-                <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
-                  {item.message}
-                </span>
-              </div>
-            );
-          }
+        {/* LEFT: Topic panel (desktop only) */}
+        {hasTopicPanel && (
+          <div className="hidden md:block md:w-1/2 border-r border-gray-200 bg-white overflow-y-auto">
+            <TopicPanelContent topicData={topicData} />
+          </div>
+        )}
 
-          if ("type" in item && item.type === "error") {
-            return (
-              <div key={i} className="flex justify-start">
-                <div className="max-w-[85%] md:max-w-[70%] px-4 py-3 rounded-2xl rounded-bl-md bg-red-50 border border-red-200">
-                  <div className="flex items-start gap-2">
-                    <span className="text-red-500 mt-0.5 shrink-0">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
-                      </svg>
-                    </span>
-                    <p className="text-sm text-red-700">{item.message}</p>
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
-          const msg = item as ChatMessage;
-          const isUser = msg.role === "user";
-
-          return (
-            <div
-              key={i}
-              className={`flex ${isUser ? "justify-end" : "justify-start"}`}
-            >
-              <div
-                className={`max-w-[85%] md:max-w-[70%] px-4 py-3 rounded-2xl ${
-                  isUser
-                    ? "bg-indigo-600 text-white rounded-br-md"
-                    : "bg-gray-100 text-gray-900 rounded-bl-md"
-                }`}
+        {/* RIGHT (or full width): Chat area */}
+        <div className={`flex flex-col ${hasTopicPanel ? "w-full md:w-1/2" : "flex-1"} min-w-0`}>
+          {/* Mobile topic popover trigger */}
+          {hasTopicPanel && (
+            <div className="md:hidden border-b border-gray-200 bg-gray-50 px-4 py-2">
+              <button
+                onClick={() => setPopoverOpen(true)}
+                className="text-xs text-indigo-600 font-medium flex items-center gap-1.5"
               >
-                {isUser ? (
-                  <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                    {msg.content}
-                  </div>
-                ) : (
-                  <div className="text-sm leading-relaxed prose-sm">
-                    {msg.content ? (
-                      <MarkdownContent content={msg.content} />
-                    ) : (
-                      isStreaming && (
-                        <span className="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-0.5" />
-                      )
-                    )}
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-7-4a1 1 0 1 1-2 0 1 1 0 0 1 2 0ZM9 9a.75.75 0 0 0 0 1.5h.253a.25.25 0 0 1 .244.304l-.459 2.066A1.75 1.75 0 0 0 10.747 15H11a.75.75 0 0 0 0-1.5h-.253a.25.25 0 0 1-.244-.304l.459-2.066A1.75 1.75 0 0 0 9.253 9H9Z" clipRule="evenodd" />
+                </svg>
+                View topic details
+              </button>
+            </div>
+          )}
+
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="flex min-h-0">
+              <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
+                {/* Faux topic-context message */}
+                {topicId && topicData && (
+                  <div className="flex justify-center">
+                    <span className="text-xs text-gray-500 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-full">
+                      Discussing: <span className="font-medium text-indigo-700">{topicData.topic.question}</span>
+                    </span>
                   </div>
                 )}
+
+                {messages.map((item, i) => {
+                  if ("type" in item && item.type === "status") {
+                    return (
+                      <div key={i} className="flex justify-center">
+                        <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
+                          {item.message}
+                        </span>
+                      </div>
+                    );
+                  }
+
+                  if ("type" in item && item.type === "error") {
+                    return (
+                      <div key={i} className="flex justify-start">
+                        <div className="max-w-[85%] md:max-w-[70%] px-4 py-3 rounded-2xl rounded-bl-md bg-red-50 border border-red-200">
+                          <div className="flex items-start gap-2">
+                            <span className="text-red-500 mt-0.5 shrink-0">
+                              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+                                <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0Zm-8-5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5A.75.75 0 0 1 10 5Zm0 10a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+                              </svg>
+                            </span>
+                            <p className="text-sm text-red-700">{item.message}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  const msg = item as ChatMessage;
+                  const isUser = msg.role === "user";
+
+                  return (
+                    <div
+                      key={i}
+                      className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                    >
+                      <div
+                        className={`max-w-[85%] md:max-w-[70%] px-4 py-3 rounded-2xl ${
+                          isUser
+                            ? "bg-indigo-600 text-white rounded-br-md"
+                            : "bg-gray-100 text-gray-900 rounded-bl-md"
+                        }`}
+                      >
+                        {isUser ? (
+                          <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                            {msg.content}
+                          </div>
+                        ) : (
+                          <div className="text-sm leading-relaxed prose-sm">
+                            {msg.content ? (
+                              <MarkdownContent content={msg.content} />
+                            ) : (
+                              isStreaming && (
+                                <span className="inline-block w-2 h-4 bg-gray-400 animate-pulse ml-0.5" />
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                <div ref={messagesEndRef} />
+              </div>
+
+              {/* Web search sidebar (only when no topic panel) */}
+              {!hasTopicPanel && webSearch.totalSearches > 0 && (
+                <WebSearchSidebar webSearch={webSearch} />
+              )}
+            </div>
+          </div>
+
+          {/* Input area */}
+          {(conversationId || topicId) && (
+            <div className="border-t border-gray-200 bg-white px-4 py-3">
+              <div className="max-w-3xl mx-auto flex gap-2">
+                <textarea
+                  ref={textareaRef}
+                  value={input}
+                  onChange={(e) => {
+                    setInput(e.target.value);
+                    const ta = e.target;
+                    ta.style.height = "auto";
+                    ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Continue the discussion..."
+                  rows={1}
+                  disabled={isStreaming}
+                  className="flex-1 resize-none px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm text-gray-900 disabled:opacity-50"
+                />
+                <button
+                  onClick={sendReply}
+                  disabled={isStreaming || !input.trim()}
+                  className="px-4 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  Send
+                </button>
               </div>
             </div>
-          );
-        })}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Right sidebar: topic panel takes priority, otherwise web search */}
-      {topicData ? (
-        <TopicPanel topicData={topicData} />
-      ) : webSearch.totalSearches > 0 ? (
-        <WebSearchSidebar webSearch={webSearch} />
-      ) : null}
-      </div>
-
-      {/* Input area */}
-      {conversationId && (
-        <div className="border-t border-gray-200 bg-white px-4 py-3">
-          <div className="max-w-3xl mx-auto flex gap-2">
-            <textarea
-              ref={textareaRef}
-              value={input}
-              onChange={(e) => {
-                setInput(e.target.value);
-                const ta = e.target;
-                ta.style.height = "auto";
-                ta.style.height = Math.min(ta.scrollHeight, 160) + "px";
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder="Continue the discussion..."
-              rows={1}
-              disabled={isStreaming}
-              className="flex-1 resize-none px-4 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-sm text-gray-900 disabled:opacity-50"
-            />
-            <button
-              onClick={sendReply}
-              disabled={isStreaming || !input.trim()}
-              className="px-4 py-3 rounded-xl bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              Send
-            </button>
-          </div>
+          )}
         </div>
+      </div>
+
+      {/* Mobile topic popover */}
+      {hasTopicPanel && (
+        <TopicPopover topicData={topicData} open={popoverOpen} onClose={() => setPopoverOpen(false)} />
       )}
     </div>
   );

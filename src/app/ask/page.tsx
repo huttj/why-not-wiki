@@ -16,9 +16,13 @@ function AskPageContent() {
   const searchParams = useSearchParams();
   const topicQuestion = searchParams.get("q");
   const topicSlug = searchParams.get("topic");
+  const topicId = searchParams.get("topicId");
+
+  // If coming from a topic page, go straight to chat
+  const isTopicDiscussion = !!(topicSlug && topicId && topicQuestion);
 
   const [question, setQuestion] = useState(topicQuestion || "");
-  const [started, setStarted] = useState(false);
+  const [started, setStarted] = useState(isTopicDiscussion);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -29,7 +33,11 @@ function AskPageContent() {
   if (started) {
     return (
       <div className="h-[calc(100vh-4rem)] flex flex-col">
-        <Chat initialQuestion={question.trim()} topicSlug={topicSlug || undefined} />
+        <Chat
+          initialQuestion={question.trim()}
+          topicSlug={topicSlug || undefined}
+          topicId={topicId || undefined}
+        />
       </div>
     );
   }

@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     .from("users")
     .upsert({ id: user.id, email: user.email! }, { onConflict: "id" });
 
-  const { question } = await request.json();
+  const { question, topic_id } = await request.json();
   if (!question || typeof question !== "string" || question.trim().length === 0) {
     return NextResponse.json(
       { error: "Question is required" },
@@ -31,12 +31,24 @@ export async function POST(request: Request) {
     );
   }
 
-  // Create conversation record
+  // If topic_id provided, fetch the existing topic for context
+  let existingTopic: { id: string; slug: string; question: string; category: number } | null = null;
+  if (topic_id) {
+    const { data } = await supabase
+      .from("topics")
+      .select("id, slug, question, category")
+      .eq("id", topic_id)
+      .single();
+    existingTopic = data;
+  }
+
+  // Create conversation record, pre-linked to topic if provided
   const { data: conversation, error: convError } = await supabase
     .from("conversations")
     .insert({
       user_id: user.id,
       messages: [{ role: "user", content: question.trim() }],
+      ...(existingTopic ? { topic_id: existingTopic.id } : {}),
     })
     .select("id")
     .single();
@@ -63,10 +75,22 @@ export async function POST(request: Request) {
         let continueLoop = true;
 
         while (continueLoop) {
+          // Augment system prompt with existing topic context to prevent duplicates
+          let systemPrompt = SYSTEM_PROMPT;
+          if (existingTopic) {
+            systemPrompt += `\n\nIMPORTANT CONTEXT: This conversation is about an EXISTING topic in the archive.
+- Topic ID: ${existingTopic.id}
+- Topic slug: ${existingTopic.slug}
+- Original question: "${existingTopic.question}"
+- Current category: ${existingTopic.category}
+
+When you categorize this topic, you MUST use is_new_topic: false and existing_topic_id: "${existingTopic.id}". Do NOT create a new topic — update the existing one. You do NOT need to search the archive for this topic since you already have its details.`;
+          }
+
           const response = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
             max_tokens: 4096,
-            system: SYSTEM_PROMPT,
+            system: systemPrompt,
             tools: [
               ...TOOL_DEFINITIONS,
               { type: "web_search_20250305", name: "web_search", max_uses: 3 },
