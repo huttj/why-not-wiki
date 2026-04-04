@@ -24,12 +24,36 @@ interface Citation {
   page_age: string | null;
 }
 
+interface StatusGroup {
+  type: "status_group";
+  message: string;
+  count: number;
+}
+
 type DisplayItem = ChatMessage | StatusMessage | ErrorMessage;
+type GroupedDisplayItem = ChatMessage | StatusGroup | ErrorMessage;
 
 interface WebSearchState {
   totalSearches: number;
   completedSearches: number;
   citations: Citation[];
+}
+
+function groupDisplayItems(items: DisplayItem[]): GroupedDisplayItem[] {
+  const result: GroupedDisplayItem[] = [];
+  for (const item of items) {
+    if ("type" in item && item.type === "status") {
+      const last = result[result.length - 1];
+      if (last && "type" in last && last.type === "status_group" && last.message === item.message) {
+        last.count++;
+      } else {
+        result.push({ type: "status_group", message: item.message, count: 1 });
+      }
+    } else {
+      result.push(item as ChatMessage | ErrorMessage);
+    }
+  }
+  return result;
 }
 
 function MarkdownContent({ content }: { content: string }) {
@@ -556,12 +580,12 @@ export function Chat({
                   </div>
                 )}
 
-                {messages.map((item, i) => {
-                  if ("type" in item && item.type === "status") {
+                {groupDisplayItems(messages).map((item, i) => {
+                  if ("type" in item && item.type === "status_group") {
                     return (
                       <div key={i} className="flex justify-center">
                         <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full">
-                          {item.message}
+                          {item.message}{item.count > 1 ? ` x${item.count}` : ""}
                         </span>
                       </div>
                     );

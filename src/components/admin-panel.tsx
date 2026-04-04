@@ -13,7 +13,14 @@ interface ToolCallEvent {
   name: string;
 }
 
+interface ToolCallGroup {
+  type: "tool_call_group";
+  name: string;
+  count: number;
+}
+
 type DisplayItem = ChatMessage | ToolCallEvent;
+type GroupedDisplayItem = ChatMessage | ToolCallGroup;
 
 const TOOL_LABELS: Record<string, string> = {
   list_topics: "Listing topics",
@@ -26,6 +33,23 @@ const TOOL_LABELS: Record<string, string> = {
   create_argument: "Creating argument",
   get_stats: "Getting stats",
 };
+
+function groupDisplayItems(items: DisplayItem[]): GroupedDisplayItem[] {
+  const result: GroupedDisplayItem[] = [];
+  for (const item of items) {
+    if ("type" in item && item.type === "tool_call") {
+      const last = result[result.length - 1];
+      if (last && "type" in last && last.type === "tool_call_group" && last.name === item.name) {
+        last.count++;
+      } else {
+        result.push({ type: "tool_call_group", name: item.name, count: 1 });
+      }
+    } else {
+      result.push(item as ChatMessage);
+    }
+  }
+  return result;
+}
 
 function MarkdownContent({ content }: { content: string }) {
   return (
@@ -275,13 +299,14 @@ export function AdminPanel() {
           </div>
         )}
 
-        {messages.map((item, i) => {
-          if ("type" in item && item.type === "tool_call") {
+        {groupDisplayItems(messages).map((item, i) => {
+          if ("type" in item && item.type === "tool_call_group") {
+            const label = TOOL_LABELS[item.name] || item.name;
             return (
               <div key={i} className="flex justify-center">
                 <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full flex items-center gap-1.5">
                   <span className="inline-block w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
-                  {TOOL_LABELS[item.name] || item.name}
+                  {label}{item.count > 1 ? ` x${item.count}` : ""}
                 </span>
               </div>
             );
