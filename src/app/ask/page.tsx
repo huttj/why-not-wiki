@@ -14,11 +14,7 @@ export default function AskPage() {
 
 function AskPageContent() {
   const searchParams = useSearchParams();
-  const topicQuestion = searchParams.get("q");
-  const topicSlug = searchParams.get("topic");
   const topicId = searchParams.get("topicId");
-
-  const isTopicDiscussion = !!(topicSlug && topicId && topicQuestion);
 
   const [question, setQuestion] = useState("");
   const [started, setStarted] = useState(false);
@@ -29,13 +25,20 @@ function AskPageContent() {
     setStarted(true);
   }
 
+  // Topic discussions go straight to chat view (no intermediate form)
+  if (topicId) {
+    return (
+      <div className="h-[calc(100vh-4rem)] flex flex-col">
+        <Chat topicId={topicId} />
+      </div>
+    );
+  }
+
   if (started) {
     return (
       <div className="h-[calc(100vh-4rem)] flex flex-col">
         <Chat
           initialQuestion={question.trim()}
-          topicSlug={topicSlug || undefined}
-          topicId={topicId || undefined}
         />
       </div>
     );
@@ -44,26 +47,17 @@ function AskPageContent() {
   return (
     <div className="max-w-2xl mx-auto px-4 py-20">
       <h1 className="text-3xl font-bold text-gray-900 mb-2 text-center">
-        {topicSlug ? "Continue the discussion" : "Ask a question"}
+        Ask a question
       </h1>
       <p className="text-gray-500 text-center mb-10">
-        {topicSlug
-          ? "Add your perspective to this topic."
-          : <>What&apos;s something you&apos;ve always wondered about? Start with &ldquo;Why can&apos;t we just...&rdquo;</>}
+        <>What&apos;s something you&apos;ve always wondered about? Start with &ldquo;Why can&apos;t we just...&rdquo;</>
       </p>
-
-      {isTopicDiscussion && (
-        <div className="mb-6 bg-indigo-50 border border-indigo-100 rounded-xl px-5 py-4">
-          <p className="text-xs font-medium text-indigo-500 uppercase tracking-wide mb-1">Discussing</p>
-          <p className="text-sm font-medium text-indigo-800">{topicQuestion}</p>
-        </div>
-      )}
 
       <form onSubmit={handleSubmit}>
         <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder={isTopicDiscussion ? "Share your thoughts on this topic..." : "Why can't we just..."}
+          placeholder="Why can't we just..."
           rows={3}
           autoFocus
           className="w-full px-5 py-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-lg text-gray-900 resize-none"
