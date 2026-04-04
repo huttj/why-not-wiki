@@ -264,12 +264,14 @@ export function Chat({
   existingMessages,
   topicSlug: initialTopicSlug,
   topicId,
+  topicQuestion,
 }: {
   initialQuestion?: string;
   conversationId?: string;
   existingMessages?: ChatMessage[];
   topicSlug?: string;
   topicId?: string;
+  topicQuestion?: string;
 }) {
   const [messages, setMessages] = useState<DisplayItem[]>(
     existingMessages || []
@@ -364,7 +366,16 @@ export function Chat({
   }
 
   async function sendReply() {
-    if (!input.trim() || !conversationId || isStreaming) return;
+    if (!input.trim() || isStreaming) return;
+
+    // If no conversation started yet (topic discussion), start one
+    if (!conversationId) {
+      const userMessage = input.trim();
+      setInput("");
+      if (textareaRef.current) textareaRef.current.style.height = "auto";
+      startConversation(userMessage);
+      return;
+    }
 
     const userMessage = input.trim();
     setInput("");
@@ -540,11 +551,11 @@ export function Chat({
           <div className="flex-1 overflow-y-auto">
             <div className="flex min-h-0">
               <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-                {/* Show "Discussing" context before the first message */}
-                {topicId && topicData && messages.length > 0 && (
+                {/* Show "Discussing" context at the top */}
+                {topicId && (topicData || topicQuestion) && (
                   <div className="flex justify-center">
                     <span className="text-xs text-gray-500 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-full">
-                      Discussing: <span className="font-medium text-indigo-700">{topicData.topic.question}</span>
+                      Discussing: <span className="font-medium text-indigo-700">{topicData?.topic.question || topicQuestion}</span>
                     </span>
                   </div>
                 )}
