@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
 
 export default function LoginPage() {
@@ -15,17 +14,20 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOtp({
-      email,
-      options: {
-        emailRedirectTo: `${window.location.origin}/auth/callback`,
-      },
+    const res = await fetch("/api/auth/send-magic-link", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        redirectTo: `${window.location.origin}/auth/callback`,
+      }),
     });
 
+    const data = await res.json();
+
     setLoading(false);
-    if (error) {
-      setError(error.message);
+    if (!res.ok) {
+      setError(data.error || "Something went wrong");
     } else {
       setSent(true);
     }
