@@ -1,4 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export async function isAdmin(supabase: SupabaseClient): Promise<boolean> {
   const {
@@ -7,7 +8,11 @@ export async function isAdmin(supabase: SupabaseClient): Promise<boolean> {
 
   if (!user) return false;
 
-  const { data } = await supabase
+  // Use admin client to bypass RLS and avoid infinite recursion on users table
+  const adminClient = createAdminClient();
+  if (!adminClient) return false;
+
+  const { data } = await adminClient
     .from("users")
     .select("is_admin")
     .eq("id", user.id)
@@ -25,7 +30,12 @@ export async function requireAdmin(supabase: SupabaseClient) {
     throw new Error("Unauthorized");
   }
 
-  const { data } = await supabase
+  const adminClient = createAdminClient();
+  if (!adminClient) {
+    throw new Error("Admin client not configured");
+  }
+
+  const { data } = await adminClient
     .from("users")
     .select("is_admin")
     .eq("id", user.id)
