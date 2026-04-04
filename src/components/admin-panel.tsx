@@ -138,7 +138,14 @@ const QUICK_ACTIONS = [
   },
 ];
 
-export function AdminPanel() {
+interface PageContext {
+  page: string;
+  topicSlug?: string;
+  conversationId?: string;
+  topicId?: string;
+}
+
+export function AdminPanel({ pageContext }: { pageContext?: PageContext } = {}) {
   const [messages, setMessages] = useState<DisplayItem[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
@@ -169,7 +176,7 @@ export function AdminPanel() {
         const res = await fetch("/api/admin/bot", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: newHistory }),
+          body: JSON.stringify({ messages: newHistory, pageContext }),
         });
 
         if (!res.ok) {
@@ -262,7 +269,7 @@ export function AdminPanel() {
         setIsStreaming(false);
       }
     },
-    [input, isStreaming, chatHistory]
+    [input, isStreaming, chatHistory, pageContext]
   );
 
   function handleKeyDown(e: React.KeyboardEvent) {

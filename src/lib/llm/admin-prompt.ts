@@ -23,6 +23,39 @@ The three categories:
 
 Argument positions: "for" (why it could work) or "against" (why it can't work).`;
 
+interface PageContext {
+  page: string;
+  topicSlug?: string;
+  conversationId?: string;
+  topicId?: string;
+}
+
+export function buildAdminSystemPrompt(pageContext?: PageContext): string {
+  if (!pageContext) return ADMIN_SYSTEM_PROMPT;
+
+  let contextBlock = "";
+  switch (pageContext.page) {
+    case "topic":
+      contextBlock = `\n\n## Current Page Context\nThe admin is currently viewing the topic page for slug: "${pageContext.topicSlug}". Use get_topic with this slug to understand what they're looking at. When they refer to "this topic" or "this", they mean this one.`;
+      break;
+    case "conversation":
+      contextBlock = `\n\n## Current Page Context\nThe admin is currently viewing conversation ID: "${pageContext.conversationId}". When they refer to "this conversation" or "this", they mean this one. You may want to look up the related topic if needed.`;
+      break;
+    case "ask":
+      if (pageContext.topicId) {
+        contextBlock = `\n\n## Current Page Context\nThe admin is on the Ask page, discussing topic ID: "${pageContext.topicId}". When they refer to "this topic" or "this", they mean this one.`;
+      } else {
+        contextBlock = `\n\n## Current Page Context\nThe admin is on the Ask page (composing a new question).`;
+      }
+      break;
+    case "home":
+      contextBlock = `\n\n## Current Page Context\nThe admin is on the home page, viewing the list of recent topics.`;
+      break;
+  }
+
+  return ADMIN_SYSTEM_PROMPT + contextBlock;
+}
+
 export const ADMIN_TOOL_DEFINITIONS = [
   {
     name: "list_topics",

@@ -5,6 +5,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import {
   ADMIN_SYSTEM_PROMPT,
   ADMIN_TOOL_DEFINITIONS,
+  buildAdminSystemPrompt,
 } from "@/lib/llm/admin-prompt";
 import {
   handleListTopics,
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const { messages: clientMessages } = await request.json();
+  const { messages: clientMessages, pageContext } = await request.json();
   if (!Array.isArray(clientMessages) || clientMessages.length === 0) {
     return NextResponse.json(
       { error: "Messages are required" },
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
           const response = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
             max_tokens: 4096,
-            system: ADMIN_SYSTEM_PROMPT,
+            system: buildAdminSystemPrompt(pageContext),
             tools: ADMIN_TOOL_DEFINITIONS as Anthropic.Tool[],
             messages,
             stream: true,

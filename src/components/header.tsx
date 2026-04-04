@@ -4,10 +4,12 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { User } from "@supabase/supabase-js";
+import { useAdminPanel } from "./admin-panel-provider";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
   const [isAdminUser, setIsAdminUser] = useState(false);
+  const { toggle: toggleAdminPanel, isOpen: adminPanelOpen } = useAdminPanel();
 
   useEffect(() => {
     const supabase = createClient();
@@ -50,12 +52,16 @@ export function Header() {
           {user ? (
             <>
               {isAdminUser && (
-                <Link
-                  href="/admin"
-                  className="text-sm text-gray-500 hover:text-gray-700 transition font-medium"
+                <button
+                  onClick={toggleAdminPanel}
+                  className={`text-sm transition font-medium ${
+                    adminPanelOpen
+                      ? "text-indigo-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
                 >
                   Admin
-                </Link>
+                </button>
               )}
               <Link
                 href="/ask"

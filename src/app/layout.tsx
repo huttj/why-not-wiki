@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Header } from "@/components/header";
+import { AdminWrapper } from "@/components/admin-wrapper";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -16,8 +17,10 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <Header />
-        <main className="flex-1">{children}</main>
+        <AdminWrapper>
+          <Header />
+          <main className="flex-1">{children}</main>
+        </AdminWrapper>
       </body>
     </html>
   );
