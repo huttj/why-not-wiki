@@ -18,11 +18,10 @@ function AskPageContent() {
   const topicSlug = searchParams.get("topic");
   const topicId = searchParams.get("topicId");
 
-  // If coming from a topic page, go straight to chat
   const isTopicDiscussion = !!(topicSlug && topicId && topicQuestion);
 
-  const [question, setQuestion] = useState(topicQuestion || "");
-  const [started, setStarted] = useState(isTopicDiscussion);
+  const [question, setQuestion] = useState("");
+  const [started, setStarted] = useState(false);
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -53,11 +52,18 @@ function AskPageContent() {
           : <>What&apos;s something you&apos;ve always wondered about? Start with &ldquo;Why can&apos;t we just...&rdquo;</>}
       </p>
 
+      {isTopicDiscussion && (
+        <div className="mb-6 bg-indigo-50 border border-indigo-100 rounded-xl px-5 py-4">
+          <p className="text-xs font-medium text-indigo-500 uppercase tracking-wide mb-1">Discussing</p>
+          <p className="text-sm font-medium text-indigo-800">{topicQuestion}</p>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit}>
         <textarea
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="Why can't we just..."
+          placeholder={isTopicDiscussion ? "Share your thoughts on this topic..." : "Why can't we just..."}
           rows={3}
           autoFocus
           className="w-full px-5 py-4 rounded-xl border border-gray-300 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition text-lg text-gray-900 resize-none"

@@ -334,12 +334,7 @@ export function Chat({
 
   async function startConversation(question: string) {
     setIsStreaming(true);
-    // Show faux topic-context message if this is a topic discussion, otherwise show the user message
-    if (topicId) {
-      setMessages([]);
-    } else {
-      setMessages([{ role: "user", content: question }]);
-    }
+    setMessages([{ role: "user", content: question }]);
     setWebSearch({ totalSearches: 0, completedSearches: 0, citations: [] });
 
     try {
@@ -545,8 +540,8 @@ export function Chat({
           <div className="flex-1 overflow-y-auto">
             <div className="flex min-h-0">
               <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
-                {/* Faux topic-context message */}
-                {topicId && topicData && (
+                {/* Show "Discussing" context before the first message */}
+                {topicId && topicData && messages.length > 0 && (
                   <div className="flex justify-center">
                     <span className="text-xs text-gray-500 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-full">
                       Discussing: <span className="font-medium text-indigo-700">{topicData.topic.question}</span>
