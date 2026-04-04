@@ -26,9 +26,11 @@ Citations:
 - When you use web search results, embed inline citations as markdown links in your response text.
 - Use the format [descriptive text](url) to cite sources naturally within sentences.
 - For example: "According to [a 2024 MIT study](https://example.com/study), this approach has been tested..."
+- Or use numbered references like: "Research shows community Q&A can be highly effective [1]." with "[1]: https://example.com" at the end.
 - Cite specific claims, not entire paragraphs. Place the citation right where you reference the fact.
 - Include citations in your categorize_topic reasoning too, so the topic summary has source links.
-- Don't dump a list of references at the end — weave them into the text naturally.
+- NEVER dump bare URLs at the end like "Sources: https://...". Always format sources as markdown links — either inline [text](url) links woven into sentences, or numbered [1] references with a markdown link list at the end.
+- Every URL must be a clickable markdown link, never a bare URL.
 
 Formatting:
 - Keep responses concise — aim for 2-4 short paragraphs, not essays.
@@ -73,7 +75,7 @@ export const TOOL_DEFINITIONS = [
         },
         reasoning: {
           type: "string",
-          description: "The LLM's assessment and reasoning for this category",
+          description: "The LLM's assessment and reasoning for this category. Use markdown formatting. Sources must be inline markdown links [text](url) or numbered references [1] with links — never bare URLs.",
         },
         arguments_for: {
           type: "array",
