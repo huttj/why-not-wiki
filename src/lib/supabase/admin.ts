@@ -1,16 +1,18 @@
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
 
-// Service-role client for server-side operations that need to bypass RLS
+// Server-side client using the Supabase secret key to bypass RLS
 // (e.g. reading user emails for conversation attribution)
 export function createAdminClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!serviceRoleKey) {
+  const secretKey =
+    process.env.SUPABASE_SECRET_KEY ??
+    process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!secretKey) {
     return null;
   }
 
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    serviceRoleKey,
+    secretKey,
     { auth: { persistSession: false } }
   );
 }
