@@ -262,16 +262,12 @@ export function Chat({
   initialQuestion,
   conversationId: initialConversationId,
   existingMessages,
-  topicSlug: initialTopicSlug,
   topicId,
-  topicQuestion,
 }: {
   initialQuestion?: string;
   conversationId?: string;
   existingMessages?: ChatMessage[];
-  topicSlug?: string;
   topicId?: string;
-  topicQuestion?: string;
 }) {
   const [messages, setMessages] = useState<DisplayItem[]>(
     existingMessages || []
@@ -307,12 +303,12 @@ export function Chat({
     }
   }, []);
 
-  // Fetch topic data when an initial topicSlug is provided
+  // Fetch topic data when a topicId is provided
   useEffect(() => {
-    if (initialTopicSlug) {
-      fetchTopicData(initialTopicSlug);
+    if (topicId) {
+      fetchTopicData(topicId);
     }
-  }, [initialTopicSlug, fetchTopicData]);
+  }, [topicId, fetchTopicData]);
 
   // Fetch/refresh topic data when a topic is categorized
   useEffect(() => {
@@ -552,10 +548,10 @@ export function Chat({
             <div className="flex min-h-0">
               <div className="flex-1 overflow-y-auto px-4 py-6 space-y-4">
                 {/* Show "Discussing" context at the top */}
-                {topicId && (topicData || topicQuestion) && (
+                {topicId && topicData && (
                   <div className="flex justify-center">
                     <span className="text-xs text-gray-500 bg-indigo-50 border border-indigo-100 px-4 py-2 rounded-full">
-                      Discussing: <span className="font-medium text-indigo-700">{topicData?.topic.question || topicQuestion}</span>
+                      Discussing: <span className="font-medium text-indigo-700">{topicData.topic.question}</span>
                     </span>
                   </div>
                 )}

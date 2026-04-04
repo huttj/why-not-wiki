@@ -8,10 +8,12 @@ export async function GET(
   const { slug } = await params;
   const supabase = await createClient();
 
+  // Support lookup by ID when slug is a UUID
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
   const { data: topic, error } = await supabase
     .from("topics")
     .select("*")
-    .eq("slug", slug)
+    .eq(isUuid ? "id" : "slug", slug)
     .single();
 
   if (error || !topic) {

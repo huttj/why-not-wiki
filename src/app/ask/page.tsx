@@ -14,11 +14,7 @@ export default function AskPage() {
 
 function AskPageContent() {
   const searchParams = useSearchParams();
-  const topicQuestion = searchParams.get("q");
-  const topicSlug = searchParams.get("topic");
   const topicId = searchParams.get("topicId");
-
-  const isTopicDiscussion = !!(topicSlug && topicId && topicQuestion);
 
   const [question, setQuestion] = useState("");
   const [started, setStarted] = useState(false);
@@ -30,14 +26,10 @@ function AskPageContent() {
   }
 
   // Topic discussions go straight to chat view (no intermediate form)
-  if (isTopicDiscussion) {
+  if (topicId) {
     return (
       <div className="h-[calc(100vh-4rem)] flex flex-col">
-        <Chat
-          topicSlug={topicSlug}
-          topicId={topicId}
-          topicQuestion={topicQuestion}
-        />
+        <Chat topicId={topicId} />
       </div>
     );
   }
