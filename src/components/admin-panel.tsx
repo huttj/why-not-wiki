@@ -11,12 +11,14 @@ interface ChatMessage {
 interface ToolCallEvent {
   type: "tool_call";
   name: string;
+  input?: Record<string, unknown>;
 }
 
 interface ToolCallGroup {
   type: "tool_call_group";
   name: string;
   count: number;
+  inputs: Array<Record<string, unknown>>;
 }
 
 type DisplayItem = ChatMessage | ToolCallEvent;
@@ -41,14 +43,26 @@ function groupDisplayItems(items: DisplayItem[]): GroupedDisplayItem[] {
       const last = result[result.length - 1];
       if (last && "type" in last && last.type === "tool_call_group" && last.name === item.name) {
         last.count++;
+        if (item.input) last.inputs.push(item.input);
       } else {
-        result.push({ type: "tool_call_group", name: item.name, count: 1 });
+        result.push({
+          type: "tool_call_group",
+          name: item.name,
+          count: 1,
+          inputs: item.input ? [item.input] : [],
+        });
       }
     } else {
       result.push(item as ChatMessage);
     }
   }
   return result;
+}
+
+function formatToolInput(input: Record<string, unknown>): string {
+  return Object.entries(input)
+    .map(([k, v]) => `${k}: ${typeof v === "string" ? v : JSON.stringify(v)}`)
+    .join(", ");
 }
 
 function MarkdownContent({ content }: { content: string }) {
@@ -226,7 +240,7 @@ export function AdminPanel() {
               } else if (data.type === "tool_call") {
                 setMessages((prev) => [
                   ...prev,
-                  { type: "tool_call", name: data.name },
+                  { type: "tool_call", name: data.name, input: data.input },
                 ]);
               } else if (data.type === "done") {
                 // Update chat history with full assistant response
@@ -304,9 +318,21 @@ export function AdminPanel() {
             const label = TOOL_LABELS[item.name] || item.name;
             return (
               <div key={i} className="flex justify-center">
-                <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full flex items-center gap-1.5">
+                <span className="text-xs text-gray-400 bg-gray-50 px-3 py-1 rounded-full flex items-center gap-1.5 cursor-default group relative">
                   <span className="inline-block w-3 h-3 border-2 border-gray-300 border-t-transparent rounded-full animate-spin" />
                   {label}{item.count > 1 ? ` x${item.count}` : ""}
+                  {item.inputs.length > 0 && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-10">
+                      <div className="bg-gray-800 text-gray-100 text-xs rounded-lg px-3 py-2 whitespace-nowrap shadow-lg">
+                        {item.inputs.map((inp, j) => (
+                          <div key={j} className={j > 0 ? "mt-1 pt-1 border-t border-gray-600" : ""}>
+                            {formatToolInput(inp)}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-800" />
+                    </div>
+                  )}
                 </span>
               </div>
             );
