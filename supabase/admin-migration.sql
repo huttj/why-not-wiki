@@ -42,11 +42,17 @@ CREATE POLICY "Admins can delete conversations" ON public.conversations
     EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND is_admin = true)
   );
 
--- Admin can read all user records
-CREATE POLICY "Admins can read all users" ON public.users
-  FOR SELECT USING (
-    EXISTS (SELECT 1 FROM public.users WHERE id = auth.uid() AND is_admin = true)
+-- Helper function to check admin status without triggering RLS recursion on users table
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS boolean AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.users WHERE id = auth.uid() AND is_admin = true
   );
+$$ LANGUAGE sql SECURITY DEFINER;
+
+-- Admin can read all user records (uses security definer function to avoid infinite recursion)
+CREATE POLICY "Admins can read all users" ON public.users
+  FOR SELECT USING (public.is_admin());
 
 -- To make a user admin, run:
 -- UPDATE public.users SET is_admin = true WHERE email = 'your@email.com';
