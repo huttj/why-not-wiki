@@ -7,15 +7,40 @@ import type { User } from "@supabase/supabase-js";
 
 export function Header() {
   const [user, setUser] = useState<User | null>(null);
+  const [isAdminUser, setIsAdminUser] = useState(false);
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => setUser(data.user));
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      if (data.user) {
+        supabase
+          .from("users")
+          .select("is_admin")
+          .eq("id", data.user.id)
+          .single()
+          .then(({ data: userData }) => {
+            setIsAdminUser(userData?.is_admin === true);
+          });
+      }
+    });
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
+      if (session?.user) {
+        supabase
+          .from("users")
+          .select("is_admin")
+          .eq("id", session.user.id)
+          .single()
+          .then(({ data: userData }) => {
+            setIsAdminUser(userData?.is_admin === true);
+          });
+      } else {
+        setIsAdminUser(false);
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -33,6 +58,14 @@ export function Header() {
         <nav className="flex items-center gap-4">
           {user ? (
             <>
+              {isAdminUser && (
+                <Link
+                  href="/admin"
+                  className="text-sm text-gray-500 hover:text-gray-700 transition font-medium"
+                >
+                  Admin
+                </Link>
+              )}
               <Link
                 href="/ask"
                 className="px-4 py-2 rounded-lg bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition"
