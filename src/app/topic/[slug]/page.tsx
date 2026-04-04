@@ -220,7 +220,7 @@ export default async function TopicPage({
       {/* Discuss CTA */}
       <div className="text-center">
         <Link
-          href={`/ask?topic=${encodeURIComponent(topic.slug)}&q=${encodeURIComponent(topic.question)}`}
+          href={`/ask?topic=${encodeURIComponent(topic.slug)}&topicId=${encodeURIComponent(topic.id)}&q=${encodeURIComponent(topic.question)}`}
           className="inline-flex px-5 py-2.5 rounded-lg bg-indigo-600 text-white font-medium hover:bg-indigo-700 transition"
         >
           Discuss this topic →

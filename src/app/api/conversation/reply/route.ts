@@ -39,6 +39,17 @@ export async function POST(request: Request) {
     );
   }
 
+  // If conversation is linked to a topic, fetch it for context
+  let existingTopic: { id: string; slug: string; question: string; category: number } | null = null;
+  if (conversation.topic_id) {
+    const { data } = await supabase
+      .from("topics")
+      .select("id, slug, question, category")
+      .eq("id", conversation.topic_id)
+      .single();
+    existingTopic = data;
+  }
+
   // Build full message history for Anthropic
   const existingMessages: Array<{ role: string; content: string }> =
     conversation.messages || [];
@@ -70,10 +81,22 @@ export async function POST(request: Request) {
         let messages = anthropicMessages;
 
         while (continueLoop) {
+          // Augment system prompt with existing topic context to prevent duplicates
+          let systemPrompt = SYSTEM_PROMPT;
+          if (existingTopic) {
+            systemPrompt += `\n\nIMPORTANT CONTEXT: This conversation is about an EXISTING topic in the archive.
+- Topic ID: ${existingTopic.id}
+- Topic slug: ${existingTopic.slug}
+- Original question: "${existingTopic.question}"
+- Current category: ${existingTopic.category}
+
+When you categorize this topic, you MUST use is_new_topic: false and existing_topic_id: "${existingTopic.id}". Do NOT create a new topic — update the existing one.`;
+          }
+
           const response = await anthropic.messages.create({
             model: "claude-sonnet-4-20250514",
             max_tokens: 4096,
-            system: SYSTEM_PROMPT,
+            system: systemPrompt,
             tools: [
               ...TOOL_DEFINITIONS,
               { type: "web_search_20250305", name: "web_search", max_uses: 3 },
