@@ -4,6 +4,7 @@ import type { Metadata } from "next";
 import { createClient } from "@/lib/supabase/server";
 import { CategoryBadge } from "@/components/category-badge";
 import { TopicMarkdown } from "@/components/topic-markdown";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Topic, Argument, Conversation, Message } from "@/lib/types";
 import { timeAgo } from "@/lib/utils";
 
@@ -60,8 +61,9 @@ export default async function TopicPage({
   let topic: Topic | null = null;
   let args: Argument[] = [];
   let conversations: Array<
-    Pick<Conversation, "id" | "messages" | "created_at">
+    Pick<Conversation, "id" | "user_id" | "messages" | "created_at">
   > = [];
+  let userEmails: Record<string, string> = {};
 
   try {
     const supabase = await createClient();
@@ -85,11 +87,28 @@ export default async function TopicPage({
 
     const { data: convsData } = await supabase
       .from("conversations")
-      .select("id, messages, created_at")
+      .select("id, user_id, messages, created_at")
       .eq("topic_id", topic.id)
       .order("created_at", { ascending: true });
 
     conversations = convsData || [];
+
+    // Fetch user emails for attribution
+    const userIds = [...new Set(conversations.map((c) => c.user_id))];
+    if (userIds.length > 0) {
+      const admin = createAdminClient();
+      if (admin) {
+        const { data: users } = await admin
+          .from("users")
+          .select("id, email")
+          .in("id", userIds);
+        if (users) {
+          for (const u of users) {
+            userEmails[u.id] = u.email.split("@")[0];
+          }
+        }
+      }
+    }
   } catch {
     notFound();
   }
@@ -178,39 +197,32 @@ export default async function TopicPage({
           <h2 className="text-lg font-semibold text-gray-900 mb-3">
             Conversations ({conversations.length})
           </h2>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {conversations.map((conv) => {
               const msgs = (conv.messages as Message[]) || [];
+              const displayName = userEmails[conv.user_id] || "someone";
               return (
-                <details
+                <Link
                   key={conv.id}
-                  className="bg-white rounded-xl border border-gray-200 overflow-hidden group"
+                  href={`/conversation/${conv.id}`}
+                  className="block bg-white rounded-xl border border-gray-200 px-5 py-4 hover:bg-gray-50 hover:border-indigo-200 transition"
                 >
-                  <summary className="px-5 py-4 cursor-pointer hover:bg-gray-50 transition flex items-center justify-between">
-                    <span className="text-sm text-gray-700">
-                      {msgs[0]?.content?.slice(0, 100) || "Conversation"}
-                      {(msgs[0]?.content?.length || 0) > 100 ? "..." : ""}
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-medium text-indigo-600">
+                      {displayName}
                     </span>
-                    <span className="text-xs text-gray-400 ml-4 shrink-0">
+                    <span className="text-xs text-gray-400">
                       {timeAgo(conv.created_at)}
                     </span>
-                  </summary>
-                  <div className="px-5 pb-4 space-y-3 border-t border-gray-100 pt-4">
-                    {msgs.map((msg, i) => (
-                      <div
-                        key={i}
-                        className={`text-sm ${msg.role === "user" ? "text-indigo-700 font-medium" : "text-gray-600"}`}
-                      >
-                        <span className="text-xs text-gray-400 uppercase mr-2">
-                          {msg.role === "user" ? "Q:" : "A:"}
-                        </span>
-                        <span className="whitespace-pre-wrap">
-                          {msg.content}
-                        </span>
-                      </div>
-                    ))}
                   </div>
-                </details>
+                  <p className="text-sm text-gray-700">
+                    {msgs[0]?.content?.slice(0, 120) || "Conversation"}
+                    {(msgs[0]?.content?.length || 0) > 120 ? "..." : ""}
+                  </p>
+                  <span className="text-xs text-gray-400 mt-1 inline-block">
+                    {msgs.length} message{msgs.length !== 1 ? "s" : ""} →
+                  </span>
+                </Link>
               );
             })}
           </div>
