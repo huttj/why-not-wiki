@@ -73,6 +73,7 @@ export async function POST(request: Request) {
     async start(controller) {
       try {
         let continueLoop = true;
+        let fullAssistantText = "";
 
         while (continueLoop) {
           // Augment system prompt with existing topic context to prevent duplicates
@@ -265,16 +266,18 @@ When you categorize this topic, you MUST use is_new_topic: false and existing_to
             }
 
             messages.push({ role: "user", content: toolResults });
+            fullAssistantText += currentText;
             currentText = "";
             toolUseBlocks = [];
           } else {
             continueLoop = false;
 
             // Save the final assistant text to conversation
+            fullAssistantText += currentText;
             const allMessages = [
               { role: "user", content: question.trim() },
-              ...(currentText
-                ? [{ role: "assistant", content: currentText }]
+              ...(fullAssistantText
+                ? [{ role: "assistant", content: fullAssistantText }]
                 : []),
             ];
             await supabase

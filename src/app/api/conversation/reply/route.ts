@@ -79,6 +79,7 @@ export async function POST(request: Request) {
       try {
         let continueLoop = true;
         let messages = anthropicMessages;
+        let fullAssistantText = "";
 
         while (continueLoop) {
           // Augment system prompt with existing topic context to prevent duplicates
@@ -271,16 +272,18 @@ When you categorize this topic, you MUST use is_new_topic: false and existing_to
               ...messages,
               { role: "user", content: toolResults },
             ];
+            fullAssistantText += currentText;
             currentText = "";
             toolUseBlocks = [];
           } else {
             continueLoop = false;
 
             // Save updated conversation
-            if (currentText) {
+            fullAssistantText += currentText;
+            if (fullAssistantText) {
               existingMessages.push({
                 role: "assistant",
-                content: currentText,
+                content: fullAssistantText,
               });
               await supabase
                 .from("conversations")
