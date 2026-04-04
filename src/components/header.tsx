@@ -11,34 +11,25 @@ export function Header() {
 
   useEffect(() => {
     const supabase = createClient();
-    supabase.auth.getUser().then(({ data }) => {
-      setUser(data.user);
-      if (data.user) {
-        supabase
-          .from("users")
-          .select("is_admin")
-          .eq("id", data.user.id)
-          .single()
-          .then(({ data: userData }) => {
-            setIsAdminUser(userData?.is_admin === true);
-          });
-      }
-    });
+
+    function fetchMe() {
+      fetch("/api/auth/me")
+        .then((res) => res.json())
+        .then((data) => {
+          setUser(data.user);
+          setIsAdminUser(data.isAdmin === true);
+        });
+    }
+
+    fetchMe();
 
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
       if (session?.user) {
-        supabase
-          .from("users")
-          .select("is_admin")
-          .eq("id", session.user.id)
-          .single()
-          .then(({ data: userData }) => {
-            setIsAdminUser(userData?.is_admin === true);
-          });
+        fetchMe();
       } else {
+        setUser(null);
         setIsAdminUser(false);
       }
     });
