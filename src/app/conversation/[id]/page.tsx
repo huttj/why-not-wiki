@@ -30,7 +30,7 @@ export async function generateMetadata({
   if (!conv) return {};
 
   const msgs = (conv.messages as Message[]) || [];
-  const topicQuestion = (conv.topics as { question: string } | null)?.question;
+  const topicQuestion = (conv.topics as unknown as { question: string } | null)?.question;
   const preview = msgs[0]?.content?.slice(0, 100) || "Conversation";
 
   return {
@@ -56,7 +56,7 @@ export default async function ConversationPage({
   if (!conv) notFound();
 
   const msgs = (conv.messages as Message[]) || [];
-  const topic = conv.topics as { question: string; slug: string } | null;
+  const topic = conv.topics as unknown as { question: string; slug: string } | null;
 
   // Try to get user email via admin client (bypasses RLS), fall back to anon client
   let userEmail: string | null = null;
